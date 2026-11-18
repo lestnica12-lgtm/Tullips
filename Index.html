@@ -1,0 +1,1555 @@
+<!DOCTYPE html>
+<html lang="ru" data-theme="light" data-font="m">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#ffffff">
+<title>Тюльпаны -- Учёт</title>
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/13.3.0/firebase-app.js";
+  import { getDatabase, ref, set, get, update, remove, onValue, onDisconnect, push, runTransaction, serverTimestamp, off }
+    from "https://www.gstatic.com/firebasejs/13.3.0/firebase-database.js";
+  window.FB = { initializeApp, getDatabase, ref, set, get, update, remove, onValue, onDisconnect, push, runTransaction, serverTimestamp, off };
+  window.dispatchEvent(new Event('fb-ready'));
+</script>
+
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js" defer></script>
+
+<style>
+:root {
+  --bg: #f5f7fa; --bg-elev: #ffffff; --bg-hover: #eef1f5; --text: #1a1f2b;
+  --text-muted: #6b7280; --border: #e2e6ec; --primary: #2f7d5b; --primary-hover: #256349;
+  --primary-text: #ffffff; --danger: #c0392b; --danger-hover: #a52f22; --warning: #d4a017;
+  --success: #2f9e44; --info: #1c7ed6; --shadow: 0 2px 8px rgba(0,0,0,0.06);
+  --shadow-lg: 0 8px 24px rgba(0,0,0,0.15); --radius: 12px; --radius-sm: 8px;
+  --font-size: 16px; --font-size-sm: 14px; --font-size-lg: 18px; --font-size-xl: 22px;
+  --menu-width: 280px; --safe-top: env(safe-area-inset-top, 0px); --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --transition: 0.18s ease;
+}
+[data-theme="dark"] {
+  --bg: #12161d; --bg-elev: #1c222c; --bg-hover: #252d3a; --text: #e8ecf2; --text-muted: #8b94a3;
+  --border: #2c3441; --primary: #3fa375; --primary-hover: #4fb886; --primary-text: #ffffff;
+  --danger: #e05a4a; --danger-hover: #f06c5c; --warning: #e6b93a; --success: #4fc16b;
+  --info: #4a9ee8; --shadow: 0 2px 8px rgba(0,0,0,0.4); --shadow-lg: 0 8px 24px rgba(0,0,0,0.6);
+}
+[data-font="s"] { --font-size: 14px; --font-size-sm: 12px; --font-size-lg: 16px; --font-size-xl: 19px; }
+[data-font="m"] { --font-size: 16px; --font-size-sm: 14px; --font-size-lg: 18px; --font-size-xl: 22px; }
+[data-font="l"] { --font-size: 19px; --font-size-sm: 16px; --font-size-lg: 21px; --font-size-xl: 26px; }
+
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+html, body { margin: 0; padding: 0; height: 100%; overflow: hidden; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  font-size: var(--font-size); background: var(--bg); color: var(--text);
+  -webkit-font-smoothing: antialiased; overscroll-behavior: none; user-select: none; -webkit-user-select: none;
+  transition: background var(--transition), color var(--transition);
+}
+button, input, select, textarea { font-family: inherit; font-size: inherit; color: inherit; }
+button { cursor: pointer; border: none; background: none; padding: 0; touch-action: manipulation; transition: background var(--transition), color var(--transition), transform var(--transition); }
+button:active { transform: scale(0.97); }
+input, textarea, select { background: var(--bg-elev); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 10px 12px; outline: none; width: 100%; transition: border-color var(--transition); }
+input:focus, textarea:focus, select:focus { border-color: var(--primary); }
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+
+#app-header { position: fixed; top: 0; left: 0; right: 0; height: calc(56px + var(--safe-top)); padding-top: var(--safe-top); background: var(--bg-elev); border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 8px; padding-left: 8px; padding-right: 8px; z-index: 100; box-shadow: var(--shadow); }
+#app-header .title { font-size: var(--font-size-lg); font-weight: 600; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#app-header .header-actions { display: flex; gap: 4px; align-items: center; }
+.icon-btn { width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; border-radius: 50%; font-size: 20px; color: var(--text); flex-shrink: 0; position: relative; }
+.icon-btn:hover { background: var(--bg-hover); }
+.icon-btn .badge { position: absolute; top: 6px; right: 6px; width: 8px; height: 8px; border-radius: 50%; background: var(--danger); }
+.icon-btn .badge.warn { background: var(--warning); }
+.icon-btn .badge.hide { display: none; }
+#hamburger { width: 44px; height: 44px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; border-radius: 50%; }
+#hamburger span { display: block; width: 22px; height: 2px; background: var(--text); border-radius: 2px; }
+#hamburger:hover { background: var(--bg-hover); }
+
+#menu-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 200; opacity: 0; pointer-events: none; transition: opacity var(--transition); }
+#menu-overlay.open { opacity: 1; pointer-events: auto; }
+#side-menu { position: fixed; top: 0; left: 0; bottom: 0; width: var(--menu-width); max-width: 85vw; background: var(--bg-elev); z-index: 201; transform: translateX(-100%); transition: transform var(--transition); display: flex; flex-direction: column; padding-top: var(--safe-top); padding-bottom: var(--safe-bottom); box-shadow: var(--shadow-lg); overflow-y: auto; overflow-x: hidden; }
+#side-menu.open { transform: translateX(0); }
+.menu-header { padding: 16px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: var(--font-size-lg); }
+.menu-header .tulip-logo { font-size: 24px; }
+.menu-list { list-style: none; padding: 8px; margin: 0; }
+.menu-item { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: var(--radius-sm); font-size: var(--font-size); color: var(--text); cursor: pointer; min-height: 48px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.menu-item:hover { background: var(--bg-hover); }
+.menu-item.active { background: var(--primary); color: var(--primary-text); }
+.menu-item .menu-icon { font-size: 20px; width: 24px; text-align: center; flex-shrink: 0; }
+
+#main-content { position: fixed; top: calc(56px + var(--safe-top)); left: 0; right: 0; bottom: 0; overflow-y: auto; overflow-x: hidden; padding: 12px; padding-bottom: calc(12px + var(--safe-bottom)); -webkit-overflow-scrolling: touch; }
+.section { display: none; }
+.section.active { display: block; animation: fadeIn 0.2s ease; }
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+.section-toolbar { display: flex; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; align-items: center; }
+.section-toolbar .search-input { flex: 1; min-width: 140px; padding: 10px 14px; border-radius: var(--radius); }
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 10px 16px; border-radius: var(--radius-sm); background: var(--bg-elev); border: 1px solid var(--border); color: var(--text); font-size: var(--font-size-sm); font-weight: 500; min-height: 44px; }
+.btn:hover { background: var(--bg-hover); }
+.btn.primary { background: var(--primary); color: var(--primary-text); border-color: var(--primary); }
+.btn.primary:hover { background: var(--primary-hover); }
+.btn.danger { background: var(--danger); color: #fff; border-color: var(--danger); }
+.btn.danger:hover { background: var(--danger-hover); }
+.btn.success { background: var(--success); color: #fff; border-color: var(--success); }
+.btn.ghost { background: transparent; }
+.btn.icon-only { padding: 10px; min-width: 44px; }
+
+.fab { position: fixed; right: 20px; bottom: calc(20px + var(--safe-bottom)); width: 60px; height: 60px; border-radius: 50%; background: var(--primary); color: var(--primary-text); font-size: 28px; display: flex; align-items: center; justify-content: center; box-shadow: var(--shadow-lg); z-index: 50; }
+.fab:hover { background: var(--primary-hover); transform: scale(1.05); }
+
+.orders-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+@media (max-width: 700px) { .orders-grid { grid-template-columns: 1fr; } }
+@media (min-width: 701px) and (max-width: 1100px) { .orders-grid { grid-template-columns: repeat(2, 1fr); } }
+.order-card { background: var(--bg-elev); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px; box-shadow: var(--shadow); position: relative; display: flex; flex-direction: column; gap: 8px; cursor: pointer; }
+.order-card:hover { box-shadow: var(--shadow-lg); }
+.order-card .card-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 6px; }
+.order-card .order-num { font-weight: 700; font-size: var(--font-size-lg); color: var(--primary); }
+.order-card .card-del { width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: var(--danger); font-size: 16px; flex-shrink: 0; }
+.order-card .card-del:hover { background: var(--bg-hover); }
+.order-card .card-edit { width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: var(--info); font-size: 16px; flex-shrink: 0; }
+.order-card .card-edit:hover { background: var(--bg-hover); }
+.order-card .fio { font-weight: 600; }
+.order-card .phone-row { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; font-size: var(--font-size-sm); }
+.order-card .phone-link { color: var(--info); text-decoration: none; }
+.order-card .messengers { display: flex; gap: 4px; }
+.msg-btn { width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 16px; background: var(--bg-hover); }
+.msg-btn:hover { background: var(--border); }
+.msg-btn.wa { color: #25D366; }
+.msg-btn.tg { color: #229ED9; }
+.msg-btn.vk { color: #4C75A3; }
+.msg-btn.max { color: #7B68EE; }
+.msg-btn.mail { color: var(--text-muted); }
+.order-card .bouquets-summary { font-size: var(--font-size-sm); color: var(--text-muted); line-height: 1.4; }
+.order-card .date-line { font-size: var(--font-size-sm); color: var(--text-muted); }
+.order-card .status-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; margin-top: 4px; }
+.status-btn { padding: 8px 4px; border-radius: var(--radius-sm); font-size: var(--font-size-sm); font-weight: 600; background: var(--bg-hover); color: var(--text-muted); border: 1px solid var(--border); min-height: 40px; }
+.status-btn[data-state="yes"] { background: var(--success); color: #fff; border-color: var(--success); }
+.status-btn[data-state="partial"] { background: var(--warning); color: #fff; border-color: var(--warning); }
+.status-btn[data-state="no"] { background: var(--bg-hover); color: var(--text-muted); }
+
+.squares-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+@media (max-width: 500px) { .squares-grid { grid-template-columns: repeat(3, 1fr); } }
+.square-card { aspect-ratio: 1; background: var(--bg-elev); border: 2px solid var(--border); border-radius: var(--radius-sm); display: flex; flex-direction: column; align-items: center; justify-content: center; font-weight: 700; font-size: var(--font-size-lg); cursor: pointer; position: relative; padding: 4px; text-align: center; }
+.square-card:hover { border-color: var(--primary); transform: scale(1.03); }
+.square-card.delivery { border-color: var(--info); background: rgba(28,126,214,0.08); }
+.square-card.no-delivery { border-color: var(--warning); background: rgba(212,160,23,0.08); }
+.square-card .sq-sub { font-size: 10px; font-weight: 500; color: var(--text-muted); margin-top: 2px; }
+.date-block { margin-bottom: 16px; }
+.date-block h3 { font-size: var(--font-size-lg); margin: 0 0 8px 0; color: var(--primary); padding-bottom: 4px; border-bottom: 1px solid var(--border); }
+
+.sort-card { background: var(--bg-elev); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.sort-card .sort-info { flex: 1; min-width: 0; }
+.sort-card .sort-name { font-weight: 600; font-size: var(--font-size-lg); margin-bottom: 4px; }
+.sort-card .sort-stats { font-size: var(--font-size-sm); color: var(--text-muted); display: flex; gap: 12px; flex-wrap: wrap; }
+.sort-card .sort-stats .remain { color: var(--success); font-weight: 600; }
+.sort-card .sort-stats .defect { color: var(--danger); }
+.sort-card .sort-actions { display: flex; gap: 4px; flex-shrink: 0; }
+
+.photos-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+.photo-card { background: var(--bg-elev); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; display: flex; flex-direction: column; }
+.photo-card .photo-img { aspect-ratio: 1; background: var(--bg-hover); display: flex; align-items: center; justify-content: center; font-size: 48px; color: var(--text-muted); overflow: hidden; cursor: pointer; }
+.photo-card .photo-img img { width: 100%; height: 100%; object-fit: cover; }
+.photo-card .photo-name { padding: 8px 10px; font-weight: 600; font-size: var(--font-size-sm); display: flex; justify-content: space-between; align-items: center; gap: 6px; }
+
+.xls-actions { display: flex; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; }
+.table-wrap { overflow-x: auto; border: 1px solid var(--border); border-radius: var(--radius); }
+table.xls-preview { width: 100%; border-collapse: collapse; font-size: var(--font-size-sm); min-width: 600px; }
+table.xls-preview th, table.xls-preview td { padding: 8px 10px; border-bottom: 1px solid var(--border); text-align: left; white-space: nowrap; }
+table.xls-preview th { background: var(--bg-hover); font-weight: 600; position: sticky; top: 0; }
+table.xls-preview tr:hover td { background: var(--bg-hover); }
+
+.settings-group { background: var(--bg-elev); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; margin-bottom: 12px; }
+.settings-group h3 { margin: 0 0 12px 0; font-size: var(--font-size-lg); color: var(--primary); }
+.settings-row { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 8px 0; flex-wrap: wrap; }
+.settings-row + .settings-row { border-top: 1px solid var(--border); }
+.segmented { display: inline-flex; border: 1px solid var(--border); border-radius: var(--radius-sm); overflow: hidden; }
+.segmented button { padding: 8px 14px; font-size: var(--font-size-sm); background: var(--bg-elev); min-height: 40px; }
+.segmented button.active { background: var(--primary); color: var(--primary-text); }
+.tulip-anim { text-align: center; font-size: 56px; cursor: pointer; user-select: none; display: inline-block; padding: 8px; transition: transform 0.4s ease, filter 0.4s ease; }
+.tulip-anim:active { transform: scale(1.2) rotate(-8deg); }
+.tulip-anim.color-1 { filter: hue-rotate(0deg); }
+.tulip-anim.color-2 { filter: hue-rotate(60deg); }
+.tulip-anim.color-3 { filter: hue-rotate(140deg); }
+.tulip-anim.color-4 { filter: hue-rotate(220deg); }
+.tulip-anim.color-5 { filter: hue-rotate(300deg); }
+
+.log-list { list-style: none; padding: 0; margin: 0; }
+.log-item { background: var(--bg-elev); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 10px 12px; margin-bottom: 6px; font-size: var(--font-size-sm); display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.log-item.clickable { cursor: pointer; }
+.log-item.clickable:hover { background: var(--bg-hover); }
+.log-item .log-time { color: var(--text-muted); font-size: 12px; white-space: nowrap; }
+.log-item .log-msg { flex: 1; }
+
+.modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.55); z-index: 300; display: none; align-items: center; justify-content: center; padding: 16px; opacity: 0; transition: opacity var(--transition); }
+.modal-overlay.open { display: flex; opacity: 1; }
+.modal { background: var(--bg-elev); border-radius: var(--radius); width: 100%; max-width: 520px; max-height: 90vh; display: flex; flex-direction: column; box-shadow: var(--shadow-lg); overflow: hidden; }
+.modal.large { max-width: 720px; }
+.modal-header { display: flex; align-items: center; justify-content: space-between; padding: 14px 16px; border-bottom: 1px solid var(--border); gap: 8px; }
+.modal-header h3 { margin: 0; font-size: var(--font-size-lg); }
+.modal-close { width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; border-radius: 50%; font-size: 20px; }
+.modal-close:hover { background: var(--bg-hover); }
+.modal-body { padding: 16px; overflow-y: auto; flex: 1; -webkit-overflow-scrolling: touch; }
+.modal-footer { display: flex; gap: 8px; padding: 12px 16px; border-top: 1px solid var(--border); justify-content: flex-end; flex-wrap: wrap; }
+
+.form-group { margin-bottom: 12px; }
+.form-group label { display: block; font-size: var(--font-size-sm); color: var(--text-muted); margin-bottom: 4px; font-weight: 500; }
+.form-group .hint { font-size: 12px; color: var(--text-muted); margin-top: 4px; }
+
+.bouquet-block { border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 12px; margin-bottom: 10px; background: var(--bg); }
+.bouquet-block .bouquet-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+.bouquet-block .bouquet-header h4 { margin: 0; font-size: var(--font-size); color: var(--primary); }
+.sorts-list { display: flex; flex-direction: column; gap: 8px; }
+.sort-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.sort-row select { flex: 1; min-width: 120px; }
+.sort-row input[type="number"] { width: 80px; flex-shrink: 0; }
+.sort-row .sort-del { color: var(--danger); width: 36px; height: 36px; border-radius: 50%; flex-shrink: 0; }
+.sort-row .sort-del:hover { background: var(--bg-hover); }
+
+.toggle-group { display: flex; gap: 6px; flex-wrap: wrap; }
+.toggle-group button { padding: 10px 16px; border-radius: var(--radius-sm); border: 1px solid var(--border); background: var(--bg-elev); font-size: var(--font-size-sm); min-height: 44px; flex: 1; min-width: 80px; }
+.toggle-group button.active { background: var(--primary); color: var(--primary-text); border-color: var(--primary); }
+
+.choice-list { display: flex; flex-direction: column; gap: 6px; }
+.choice-list button { padding: 12px 14px; border-radius: var(--radius-sm); border: 1px solid var(--border); background: var(--bg-elev); text-align: left; font-size: var(--font-size); min-height: 44px; }
+.choice-list button:hover { background: var(--bg-hover); }
+
+#toast-container { position: fixed; left: 50%; bottom: calc(20px + var(--safe-bottom)); transform: translateX(-50%); z-index: 400; display: flex; flex-direction: column; gap: 8px; align-items: center; pointer-events: none; max-width: 90vw; }
+.toast { background: var(--text); color: var(--bg); padding: 10px 18px; border-radius: 24px; font-size: var(--font-size-sm); box-shadow: var(--shadow-lg); pointer-events: auto; max-width: 100%; text-align: center; display: flex; align-items: center; gap: 12px;}
+.toast.error { background: var(--danger); color: #fff; }
+.toast.success { background: var(--success); color: #fff; }
+.toast.warn { background: var(--warning); color: #fff; }
+
+#sync-indicator { width: 10px; height: 10px; border-radius: 50%; background: var(--success); flex-shrink: 0; }
+#sync-indicator.offline { background: var(--danger); }
+#sync-indicator.syncing { background: var(--warning); }
+
+.ping-window { background: #0a0e14; color: #4ade80; font-family: "Courier New", monospace; font-size: 13px; padding: 14px; border-radius: var(--radius-sm); border: 1px solid #1f2937; max-height: 300px; overflow-y: auto; line-height: 1.6; }
+.ping-window .line { white-space: pre-wrap; word-break: break-all; }
+.ping-window .ok { color: #4ade80; }
+.ping-window .err { color: #f87171; }
+.ping-window .warn { color: #fbbf24; }
+.ping-window .info { color: #60a5fa; }
+
+.pin-display { text-align: center; font-size: 32px; letter-spacing: 12px; padding: 12px; background: var(--bg-hover); border-radius: var(--radius-sm); margin-bottom: 12px; min-height: 60px; font-family: monospace; }
+.pin-pad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.pin-pad button { padding: 16px; font-size: var(--font-size-xl); font-weight: 600; background: var(--bg-hover); border-radius: var(--radius-sm); min-height: 60px; }
+.pin-pad button:hover { background: var(--border); }
+.pin-pad button.action { color: var(--primary); }
+
+.hidden { display: none !important; }
+.text-muted { color: var(--text-muted); }
+.text-center { text-align: center; }
+.mt-8 { margin-top: 8px; }
+.mt-16 { margin-top: 16px; }
+.mb-8 { margin-bottom: 8px; }
+.flex { display: flex; }
+.flex-col { flex-direction: column; }
+.gap-8 { gap: 8px; }
+.flex-1 { flex: 1; }
+.overlay-loader { position: fixed; inset: 0; background: var(--bg); z-index: 999; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px; font-size: var(--font-size-lg); color: var(--text); }
+.overlay-loader .spinner { width: 44px; height: 44px; border: 4px solid var(--border); border-top-color: var(--primary); border-radius: 50%; animation: spin 0.8s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.empty-state { text-align: center; padding: 40px 20px; color: var(--text-muted); }
+.empty-state .emoji { font-size: 48px; display: block; margin-bottom: 12px; opacity: 0.6; }
+</style>
+</head>
+<body>
+
+<div id="overlay-loader" class="overlay-loader">
+  <div class="spinner"></div>
+  <div>Загрузка приложения…</div>
+</div>
+
+<header id="app-header">
+  <button id="hamburger" aria-label="Меню"><span></span><span></span><span></span></button>
+  <div class="title" id="header-title">Учёт</div>
+  <div class="header-actions">
+    <div id="sync-indicator" title="Статус синхронизации"></div>
+    <button class="icon-btn" id="btn-manual-sync" title="Синхронизировать">🔄<span class="badge hide" id="sync-badge"></span></button>
+  </div>
+</header>
+
+<div id="menu-overlay"></div>
+
+<nav id="side-menu">
+  <div class="menu-header"><span class="tulip-logo">🌷</span><span>Тюльпаны</span></div>
+  <ul class="menu-list" id="menu-list">
+    <li class="menu-item active" data-section="accounting"><span class="menu-icon">📋</span><span>Учёт (заказы)</span></li>
+    <li class="menu-item" data-section="pickup"><span class="menu-icon">📦</span><span>Сбор-выдача</span></li>
+    <li class="menu-item" data-section="sorts"><span class="menu-icon">🌷</span><span>Сорта в наличии</span></li>
+    <li class="menu-item" data-section="photos"><span class="menu-icon">📷</span><span>Фото сортов</span></li>
+    <li class="menu-item" data-section="dates"><span class="menu-icon">📅</span><span>Даты выдачи</span></li>
+    <li class="menu-item" data-section="delivery"><span class="menu-icon">🚚</span><span>Доставка</span></li>
+    <li class="menu-item" data-section="excel"><span class="menu-icon">📊</span><span>Таблица Excel</span></li>
+    <li class="menu-item" data-section="settings"><span class="menu-icon">⚙️</span><span>Настройки</span></li>
+    <li class="menu-item" data-section="synclog"><span class="menu-icon">🔄</span><span>Журнал синхронизации</span></li>
+    <li class="menu-item" data-section="actionlog"><span class="menu-icon">🕓</span><span>Журнал действий</span></li>
+  </ul>
+</nav>
+
+<main id="main-content">
+  <section class="section active" id="section-accounting">
+    <div class="section-toolbar">
+      <input type="search" class="search-input" id="acc-search" placeholder="Поиск: номер, телефон, имя…">
+      <button class="btn" id="acc-filter-btn">🔽 Фильтры</button>
+    </div>
+    <div id="acc-orders" class="orders-grid"></div>
+    <button class="fab" id="acc-add-btn" title="Новый заказ">+</button>
+  </section>
+
+  <section class="section" id="section-pickup">
+    <div class="text-muted mb-8" style="font-size:var(--font-size-sm)">Нажмите на квадрат, чтобы открыть заказ</div>
+    <div id="pickup-grid" class="squares-grid"></div>
+  </section>
+
+  <section class="section" id="section-sorts">
+    <div class="section-toolbar">
+      <button class="btn primary" id="sort-add-btn">➕ Добавить сорт</button>
+    </div>
+    <div id="sorts-list"></div>
+  </section>
+
+  <section class="section" id="section-photos">
+    <div class="text-muted mb-8" style="font-size:var(--font-size-sm)">Фотографии хранятся только на этом устройстве.</div>
+    <div id="photos-grid" class="photos-grid"></div>
+  </section>
+
+  <section class="section" id="section-dates"><div id="dates-list"></div></section>
+  <section class="section" id="section-delivery"><div id="delivery-list"></div></section>
+
+  <section class="section" id="section-excel">
+    <div class="xls-actions">
+      <button class="btn primary" id="xls-download">⬇️ Скачать</button>
+      <button class="btn" id="xls-share">📤 Поделиться</button>
+    </div>
+    <div class="table-wrap">
+      <table class="xls-preview" id="xls-preview-table"><thead></thead><tbody></tbody></table>
+    </div>
+    <div class="mt-16">
+      <h3 style="font-size:var(--font-size-lg);color:var(--primary)">Остатки сортов на момент экспорта</h3>
+      <div class="table-wrap">
+        <table class="xls-preview" id="xls-remains-table"><thead></thead><tbody></tbody></table>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" id="section-settings">
+    <div class="settings-group">
+      <h3>Оформление</h3>
+      <div class="settings-row">
+        <span>Тема</span>
+        <div class="segmented" id="theme-seg">
+          <button data-theme-val="light">☀️ Светлая</button>
+          <button data-theme-val="dark">🌙 Тёмная</button>
+        </div>
+      </div>
+      <div class="settings-row">
+        <span>Размер текста</span>
+        <div class="segmented" id="font-seg">
+          <button data-font-val="s">S</button>
+          <button data-font-val="m">M</button>
+          <button data-font-val="l">L</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="settings-group">
+      <h3>Синхронизация</h3>
+      <div class="settings-row">
+        <button class="btn primary" id="check-conn-btn">🔍 Проверить соединение</button>
+        <button class="btn" id="open-db-btn">🌐 Открыть базу данных</button>
+      </div>
+      <div class="settings-row">
+        <span>Статус</span>
+        <span id="sync-status-text" class="text-muted">--</span>
+      </div>
+    </div>
+
+    <div class="settings-group">
+      <h3>Резервная копия</h3>
+      <div class="settings-row">
+        <button class="btn" id="backup-save-btn">💾 Сохранить данные</button>
+        <button class="btn" id="backup-load-btn">📥 Загрузить данные</button>
+      </div>
+      <div class="text-muted mt-8" style="font-size:12px">Требуется PIN-код (0803).</div>
+    </div>
+
+    <div class="settings-group text-center">
+      <h3>Настроение</h3>
+      <div class="tulip-anim color-1" id="tulip-anim">🌷</div>
+    </div>
+  </section>
+
+  <section class="section" id="section-synclog"><ul class="log-list" id="synclog-list"></ul></section>
+
+  <section class="section" id="section-actionlog">
+    <div class="text-muted mb-8" style="font-size:var(--font-size-sm)">Нажмите на запись, чтобы откатить все данные до этого момента (PIN 0803).</div>
+    <ul class="log-list" id="actionlog-list"></ul>
+  </section>
+</main>
+
+<div id="toast-container"></div>
+<div id="modal-root"></div>
+
+<script>
+const PIN_CODE = '0803';
+const SYNC_INTERVAL = 15000;
+const SYNC_WARN_DELAY = 60000;
+const SNAPSHOT_RETENTION = 24 * 60 * 60 * 1000;
+const DB_NAME = 'tulips_db';
+const DB_VERSION = 2;
+const FIREBASE_DB_URL = 'https://tulpann36-default-rtdb.europe-west1.firebasedatabase.app';
+const FIREBASE_PING_URL = FIREBASE_DB_URL + '/.json?shallow=true';
+const CLIENT_ID = (() => {
+  let id = localStorage.getItem('clientId');
+  if (!id) { id = 'c_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8); localStorage.setItem('clientId', id); }
+  return id;
+})();
+
+const State = {
+  orders: {}, sorts: {}, photos: {}, settings: { theme: 'light', font: 'm' },
+  online: navigator.onLine, firebaseReady: false, fb: null, syncing: false, lastSyncAt: 0,
+  syncWarnShown: false, pendingCount: 0, currentSection: 'accounting',
+  filters: { search: '', sort: '', date: '', packaging: '', delivery: '', address: '' },
+  lastRollbackTs: 0, actionLog: [], synclog: [], snapshots: [],
+};
+
+const IDB = (() => {
+  let dbp = null;
+  function open() {
+    if (dbp) return dbp;
+    dbp = new Promise((resolve, reject) => {
+      const req = indexedDB.open(DB_NAME, DB_VERSION);
+      req.onupgradeneeded = (e) => {
+        const db = e.target.result;
+        if (!db.objectStoreNames.contains('kv')) db.createObjectStore('kv');
+        if (!db.objectStoreNames.contains('photos')) db.createObjectStore('photos');
+      };
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => reject(req.error);
+    });
+    return dbp;
+  }
+  async function get(store, key) {
+    const db = await open();
+    return new Promise((res, rej) => {
+      const tx = db.transaction(store, 'readonly');
+      const r = tx.objectStore(store).get(key);
+      r.onsuccess = () => res(r.result);
+      r.onerror = () => rej(r.error);
+    });
+  }
+  async function set(store, key, val) {
+    const db = await open();
+    return new Promise((res, rej) => {
+      const tx = db.transaction(store, 'readwrite');
+      const r = tx.objectStore(store).put(val, key);
+      r.onsuccess = () => res();
+      r.onerror = () => rej(r.error);
+    });
+  }
+  async function del(store, key) {
+    const db = await open();
+    return new Promise((res, rej) => {
+      const tx = db.transaction(store, 'readwrite');
+      const r = tx.objectStore(store).delete(key);
+      r.onsuccess = () => res();
+      r.onerror = () => rej(r.error);
+    });
+  }
+  async function getAll(store) {
+    const db = await open();
+    return new Promise((res, rej) => {
+      const tx = db.transaction(store, 'readonly');
+      const r = tx.objectStore(store).getAll();
+      r.onsuccess = () => res(r.result);
+      r.onerror = () => rej(r.error);
+    });
+  }
+  async function keys(store) {
+    const db = await open();
+    return new Promise((res, rej) => {
+      const tx = db.transaction(store, 'readonly');
+      const r = tx.objectStore(store).getAllKeys();
+      r.onsuccess = () => res(r.result);
+      r.onerror = () => rej(r.error);
+    });
+  }
+  return { get, set, del, getAll, keys };
+})();
+
+function uid() { return 'o_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8); }
+function now() { return Date.now(); }
+function fmtDate(ts) { if (!ts) return '--'; const d = new Date(ts); return d.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' }); }
+function fmtDateTime(ts) { if (!ts) return '--'; const d = new Date(ts); return d.toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit' }); }
+function fmtTime(ts) { if (!ts) return '--'; const d = new Date(ts); return d.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit', second: '2-digit' }); }
+function dateKey(ts) { const d = new Date(ts); return d.toISOString().slice(0,10); }
+function parseOrderNum(n) { if (typeof n === 'number') return n; const v = parseFloat(String(n).replace(',', '.')); return isNaN(v) ? 0 : v; }
+function escHtml(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function deepClone(o) { return JSON.parse(JSON.stringify(o)); }
+function cmpOrderNum(a, b) { return parseOrderNum(a) - parseOrderNum(b); }
+function normalizePhone(p) { return String(p || '').replace(/[^\d+]/g, ''); }
+function phoneDigits(p) { return String(p || '').replace(/\D/g, ''); }
+function formatDateForDisplay(dateStr) {
+  if (!dateStr) return '';
+  const parts = dateStr.split('-');
+  if (parts.length === 3) return `${parts[2]}.${parts[1]}.${parts[0]}`;
+  return dateStr;
+}
+
+function toast(msg, type = '', dur = 3500) {
+  const c = document.getElementById('toast-container'); if (!c) return;
+  const el = document.createElement('div');
+  el.className = 'toast ' + type; el.textContent = msg; c.appendChild(el);
+  setTimeout(() => { el.style.opacity = '0'; el.style.transition = 'opacity 0.3s'; setTimeout(() => el.remove(), 300); }, dur);
+}
+function showNetworkErrorToast() {
+  if (document.getElementById('net-error-toast')) return;
+  const c = document.getElementById('toast-container');
+  const el = document.createElement('div');
+  el.id = 'net-error-toast'; el.className = 'toast error'; el.style.cssText = 'pointer-events:auto;';
+  el.innerHTML = `<span>Нет подключения к серверу.</span><button style="background:#fff;color:var(--danger);border-radius:4px;padding:4px 10px;font-weight:bold;border:none;cursor:pointer;">ОК</button>`;
+  el.querySelector('button').onclick = () => el.remove();
+  c.appendChild(el);
+  setTimeout(() => { if(el.parentNode) el.remove(); }, 8000);
+}
+
+const Modal = (() => {
+  const root = () => document.getElementById('modal-root');
+  function open({ title, body, footer, large = false, closable = true, onClose }) {
+    const overlay = document.createElement('div');
+    overlay.className = 'modal-overlay open';
+    const m = document.createElement('div');
+    m.className = 'modal' + (large ? ' large' : '');
+    m.innerHTML = `<div class="modal-header"><h3>${escHtml(title || '')}</h3>${closable ? '<button class="modal-close" aria-label="Закрыть">✕</button>' : ''}</div><div class="modal-body"></div>${footer ? '<div class="modal-footer"></div>' : ''}`;
+    const bodyEl = m.querySelector('.modal-body');
+    if (typeof body === 'string') bodyEl.innerHTML = body;
+    else if (body instanceof Node) bodyEl.appendChild(body);
+    const footerEl = m.querySelector('.modal-footer');
+    if (footer) { if (typeof footer === 'string') footerEl.innerHTML = footer; else if (footer instanceof Node) footerEl.appendChild(footer); }
+    if (closable) m.querySelector('.modal-close').onclick = () => close(overlay, onClose);
+    overlay.appendChild(m);
+    overlay.addEventListener('click', (e) => { if (e.target === overlay && closable) close(overlay, onClose); });
+    root().appendChild(overlay);
+    return { overlay, modal: m, body: bodyEl, footer: footerEl, close: () => close(overlay, onClose) };
+  }
+  function close(overlay, onClose) { overlay.style.opacity = '0'; setTimeout(() => { overlay.remove(); if (onClose) onClose(); }, 150); }
+  function confirm(msg, onYes, onNo) {
+    const footer = document.createElement('div'); footer.style.cssText = 'display:flex;gap:8px;justify-content:flex-end;width:100%';
+    const no = document.createElement('button'); no.className = 'btn'; no.textContent = 'Отмена';
+    const yes = document.createElement('button'); yes.className = 'btn primary'; yes.textContent = 'ОК';
+    footer.append(no, yes);
+    const m = open({ title: 'Подтверждение', body: `<p>${escHtml(msg)}</p>`, footer });
+    no.onclick = () => { m.close(); if (onNo) onNo(); };
+    yes.onclick = () => { m.close(); if (onYes) onYes(); };
+    return m;
+  }
+  function alert(msg, title = 'Уведомление') {
+    const footer = document.createElement('div'); footer.style.cssText = 'display:flex;justify-content:flex-end;width:100%';
+    const ok = document.createElement('button'); ok.className = 'btn primary'; ok.textContent = 'ОК';
+    footer.appendChild(ok);
+    const m = open({ title, body: `<p>${escHtml(msg)}</p>`, footer });
+    ok.onclick = () => m.close(); return m;
+  }
+  function pin(onSuccess, title = 'Введите PIN-код') {
+    let value = '';
+    const body = document.createElement('div');
+    body.innerHTML = `<div class="pin-display" id="pin-display">-- -- -- --</div><div class="pin-pad">${[1,2,3,4,5,6,7,8,9].map(n => `<button data-num="${n}">${n}</button>`).join('')}<button class="action" data-act="clear">C</button><button data-num="0">0</button><button class="action" data-act="ok">OK</button></div>`;
+    const footer = document.createElement('div'); footer.style.cssText = 'display:flex;justify-content:flex-end;width:100%';
+    const cancel = document.createElement('button'); cancel.className = 'btn'; cancel.textContent = 'Отмена';
+    footer.appendChild(cancel);
+    const m = open({ title, body, footer });
+    const disp = body.querySelector('#pin-display');
+    function render() { disp.textContent = value.padEnd(4, '--').split('').join(' '); }
+    function press(n) { if (value.length >= 4) return; value += String(n); render(); if (value.length === 4) setTimeout(tryOk, 150); }
+    function tryOk() {
+      if (value === PIN_CODE) { m.close(); onSuccess(); } else { value = ''; render(); disp.style.color = 'var(--danger)'; setTimeout(() => disp.style.color = '', 400); toast('Неверный PIN', 'error'); }
+    }
+    body.querySelectorAll('.pin-pad button').forEach(b => { b.onclick = () => { if (b.dataset.num) press(b.dataset.num); else if (b.dataset.act === 'clear') { value = ''; render(); } else if (b.dataset.act === 'ok') tryOk(); }; });
+    cancel.onclick = () => m.close(); render();
+  }
+  return { open, close, confirm, alert, pin };
+})();
+
+async function loadLogs() {
+  State.synclog = (await IDB.get('kv', 'synclog')) || [];
+  State.actionLog = (await IDB.get('kv', 'actionlog')) || [];
+  State.snapshots = (await IDB.get('kv', 'snapshots')) || [];
+  pruneOldLogs();
+}
+function pruneOldLogs() {
+  const cutoff = now() - SNAPSHOT_RETENTION;
+  State.actionLog = State.actionLog.filter(l => l.ts > cutoff);
+  State.snapshots = State.snapshots.filter(s => s.ts > cutoff);
+}
+async function logSync(msg) {
+  State.synclog.unshift({ ts: now(), msg });
+  if (State.synclog.length > 500) State.synclog = State.synclog.slice(0, 500);
+  await IDB.set('kv', 'synclog', State.synclog);
+  if (State.currentSection === 'synclog') renderSynclog();
+}
+async function logAction(msg) {
+  State.actionLog.unshift({ ts: now(), msg });
+  if (State.actionLog.length > 500) State.actionLog = State.actionLog.slice(0, 500);
+  await IDB.set('kv', 'actionlog', State.actionLog);
+  if (State.currentSection === 'actionlog') renderActionlog();
+}
+async function makeSnapshot() {
+  const snap = { ts: now(), orders: deepClone(State.orders), sorts: deepClone(State.sorts) };
+  State.snapshots.unshift(snap);
+  const cutoff = now() - SNAPSHOT_RETENTION;
+  State.snapshots = State.snapshots.filter(s => s.ts > cutoff);
+  await IDB.set('kv', 'snapshots', State.snapshots);
+}
+
+async function initFirebase() {
+  if (!window.FB) await new Promise(res => window.addEventListener('fb-ready', res, { once: true }));
+  const { initializeApp, getDatabase } = window.FB;
+  const firebaseConfig = {
+    apiKey: "AIzaSyABfjYdvuu4O0vkzw-Rhiv-efF3xtB_7JI",
+    authDomain: "tulpann36.firebaseapp.com",
+    databaseURL: FIREBASE_DB_URL,
+    projectId: "tulpann36",
+    storageBucket: "tulpann36.firebasestorage.app",
+    messagingSenderId: "369341655246",
+    appId: "1:369341655246:web:27530f36aff80a8af2c89f"
+  };
+  const app = initializeApp(firebaseConfig);
+  const db = getDatabase(app);
+  State.fb = { app, db, ...window.FB };
+  State.firebaseReady = true;
+
+  const myPresence = State.fb.ref(db, 'presence/' + CLIENT_ID);
+  State.fb.set(myPresence, { at: window.FB.serverTimestamp(), online: true });
+  State.fb.onDisconnect(myPresence).remove();
+
+  State.fb.onValue(State.fb.ref(db, 'orders'), (snap) => { State.orders = snap.val() || {}; renderCurrentSection(); updateSyncIndicator(); });
+  State.fb.onValue(State.fb.ref(db, 'sorts'), (snap) => { State.sorts = snap.val() || {}; renderCurrentSection(); });
+  State.fb.onValue(State.fb.ref(db, 'meta/lastRollback'), (snap) => {
+    const v = snap.val();
+    if (v && v.ts && v.ts > State.lastRollbackTs && v.by !== CLIENT_ID) { State.lastRollbackTs = v.ts; toast('Другой пользователь откатил данные до ' + fmtDateTime(v.targetTs), 'warn', 6000); }
+  });
+  State.fb.onValue(State.fb.ref(db, 'notifications'), (snap) => {
+    const data = snap.val() || {};
+    Object.entries(data).forEach(([id, n]) => {
+      if (n && n.to && n.to.includes(CLIENT_ID) && !n.seenBy?.[CLIENT_ID]) {
+        toast(n.text || 'Произошла накладка при создании заказа.', 'warn', 6000);
+        const upd = {}; upd['seenBy/' + CLIENT_ID] = true;
+        State.fb.update(State.fb.ref(db, 'notifications/' + id), upd);
+      }
+    });
+  });
+}
+
+const Queue = (() => {
+  const KEY = 'syncQueue'; let syncTimer = null;
+  async function list() { return (await IDB.get('kv', KEY)) || []; }
+  async function save(q) { await IDB.set('kv', KEY, q); State.pendingCount = q.length; updateSyncIndicator(); }
+  async function push(op) { const q = await list(); op.id = op.id || uid(); op.ts = now(); q.push(op); await save(q); trySyncSoon(); }
+  async function process() {
+    if (State.syncing || !State.online || !State.firebaseReady) return;
+    const q = await list(); if (!q.length) return;
+    State.syncing = true; updateSyncIndicator();
+    const remaining = [];
+    for (const op of q) {
+      try { await applyOp(op); await logSync('Отправлено: ' + describeOp(op)); }
+      catch (e) { console.warn('sync fail', op, e); remaining.push(op); showNetworkErrorToast(); }
+    }
+    await save(remaining); State.syncing = false; State.lastSyncAt = now(); updateSyncIndicator();
+    if (!remaining.length) { State.syncWarnShown = false; const badge = document.getElementById('sync-badge'); if (badge) badge.classList.add('hide'); }
+  }
+  async function applyOp(op) {
+    const { ref, set, update, remove } = State.fb; const db = State.fb.db;
+    if (op.type === 'setOrder') await set(ref(db, 'orders/' + op.id), op.data);
+    else if (op.type === 'updateOrder') await update(ref(db, 'orders/' + op.id), op.data);
+    else if (op.type === 'delOrder') await remove(ref(db, 'orders/' + op.id));
+    else if (op.type === 'setSort') await set(ref(db, 'sorts/' + op.id), op.data);
+    else if (op.type === 'updateSort') await update(ref(db, 'sorts/' + op.id), op.data);
+    else if (op.type === 'delSort') await remove(ref(db, 'sorts/' + op.id));
+    else if (op.type === 'setCounter') await set(ref(db, 'counters/lastOrder'), op.data);
+    else if (op.type === 'rollback') { await set(ref(db, 'orders'), op.orders || {}); await set(ref(db, 'sorts'), op.sorts || {}); await set(ref(db, 'meta/lastRollback'), { ts: now(), targetTs: op.targetTs, by: CLIENT_ID }); }
+    else if (op.type === 'notify') await set(ref(db, 'notifications/' + op.id), op.data);
+  }
+  function describeOp(op) { const map = { setOrder: 'заказ', updateOrder: 'изм. заказа', delOrder: 'удал. заказа', setSort: 'сорт', updateSort: 'изм. сорта', delSort: 'удал. сорта', setCounter: 'счётчик', rollback: 'откат', notify: 'уведомление' }; return (map[op.type] || op.type) + ' ' + (op.id || ''); }
+  function trySyncSoon() { if (syncTimer) return; syncTimer = setTimeout(() => { syncTimer = null; process(); }, 500); }
+  function startAuto() {
+    setInterval(process, SYNC_INTERVAL);
+    setInterval(() => { if (State.pendingCount > 0 && now() - State.lastSyncAt > SYNC_WARN_DELAY && !State.syncWarnShown) { State.syncWarnShown = true; showNetworkErrorToast(); const badge = document.getElementById('sync-badge'); if (badge) { badge.classList.remove('hide'); badge.classList.add('warn'); } } }, 5000);
+  }
+  return { push, process, startAuto, trySyncSoon, list, applyOp };
+})();
+
+function updateSyncIndicator() {
+  const el = document.getElementById('sync-indicator'); if (!el) return;
+  el.classList.remove('offline', 'syncing');
+  if (!State.online) el.classList.add('offline');
+  else if (State.syncing) el.classList.add('syncing');
+  const st = document.getElementById('sync-status-text');
+  if (st) {
+    if (!State.online) st.textContent = 'Офлайн (в очереди: ' + State.pendingCount + ')';
+    else if (State.syncing) st.textContent = 'Синхронизация…';
+    else if (State.pendingCount > 0) st.textContent = 'В очереди: ' + State.pendingCount;
+    else st.textContent = 'Синхронизировано ' + (State.lastSyncAt ? fmtTime(State.lastSyncAt) : '');
+  }
+}
+
+function allOrdersSorted() { return Object.entries(State.orders).map(([id, o]) => ({ ...o, id })).sort((a, b) => cmpOrderNum(a.orderNumber, b.orderNumber)); }
+function orderStatuses(o) {
+  const keys = ['assembled', 'issued', 'paid']; const res = {};
+  keys.forEach(k => {
+    const vals = (o.bouquets || []).map(b => b[k] || 'no');
+    if (!vals.length) res[k] = 'no';
+    else if (vals.every(v => v === 'yes')) res[k] = 'yes';
+    else if (vals.every(v => v === 'no')) res[k] = 'no';
+    else res[k] = 'partial';
+  });
+  return res;
+}
+function bouquetSummary(o) {
+  const parts = [];
+  (o.bouquets || []).forEach((b, i) => {
+    const sorts = (b.sorts || []).map(s => { const sortName = State.sorts[s.sortId]?.name || s.sortName || '--'; return sortName + '×' + s.qty; }).join(', ');
+    parts.push('Букет ' + (i + 1) + ': ' + (sorts || '--') + ' (' + (b.packaging || '--') + ')');
+  });
+  return parts.join('; ');
+}
+function orderNeedsDelivery(o) { return (o.bouquets || []).some(b => b.delivery === 'yes'); }
+
+function safeClick(fn) {
+  let busy = false;
+  return async function(e) {
+    if (busy) return;
+    busy = true;
+    try { await fn(e); } catch (err) { console.error(err); } finally { setTimeout(() => { busy = false; }, 150); }
+  };
+}
+
+function makeCardEl(o) {
+  const st = orderStatuses(o);
+  const card = document.createElement('div');
+  card.className = 'order-card'; card.dataset.id = o.id;
+  const phone = normalizePhone(o.phone || '');
+  card.innerHTML = `
+    <div class="card-top">
+      <div class="order-num">№ ${escHtml(String(o.orderNumber))}</div>
+      <div style="display:flex;gap:4px"><button class="card-edit" title="Редактировать">✏️</button><button class="card-del" title="Удалить">🗑️</button></div>
+    </div>
+    <div class="fio">${escHtml(o.fio || 'Без имени')}</div>
+    <div class="phone-row">
+      <a class="phone-link" href="tel:${escHtml(phone)}">${escHtml(o.phone || '--')}</a>
+      <div class="messengers">
+        <button class="msg-btn wa" title="WhatsApp"><i class="fa-brands fa-whatsapp"></i></button><button class="msg-btn tg" title="Telegram"><i class="fa-brands fa-telegram"></i></button><button class="msg-btn vk" title="VK"><i class="fa-brands fa-vk"></i></button><button class="msg-btn max" title="Max"><i class="fa-solid fa-comment-dots"></i></button><button class="msg-btn mail" title="Email"><i class="fa-solid fa-envelope"></i></button>
+      </div>
+    </div>
+    <div class="bouquets-summary">${escHtml(bouquetSummary(o))}</div>
+    <div class="date-line">📅 ${o.bouquets?.[0]?.date ? formatDateForDisplay(o.bouquets[0].date) : '--'} ${o.bouquets?.[0]?.time ? '⏰ ' + escHtml(o.bouquets[0].time) : ''}</div>
+    <div class="status-row">
+      <button class="status-btn" data-status="assembled" data-state="${st.assembled}">Собран</button>
+      <button class="status-btn" data-status="issued" data-state="${st.issued}">Выдан</button>
+      <button class="status-btn" data-status="paid" data-state="${st.paid}">Оплачен</button>
+    </div>
+  `;
+  const phoneDigitsStr = phoneDigits(o.phone || '');
+  card.querySelector('.msg-btn.wa').onclick = safeClick((e) => { e.stopPropagation(); openWa(phoneDigitsStr); });
+  card.querySelector('.msg-btn.tg').onclick = safeClick((e) => { e.stopPropagation(); openTg(phoneDigitsStr); });
+  card.querySelector('.msg-btn.vk').onclick = safeClick((e) => { e.stopPropagation(); openVk(); });
+  card.querySelector('.msg-btn.max').onclick = safeClick((e) => { e.stopPropagation(); openMax(phoneDigitsStr); });
+  card.querySelector('.msg-btn.mail').onclick = safeClick((e) => { e.stopPropagation(); openMail(phoneDigitsStr); });
+  card.querySelector('.card-edit').onclick = (e) => {
+    e.stopPropagation();
+    try { openOrderEditor(o.id); }
+    catch (err) { console.error('openOrderEditor failed:', err); toast('Ошибка открытия редактора: ' + err.message, 'error'); }
+  };
+  card.querySelector('.card-del').onclick = safeClick((e) => { e.stopPropagation(); deleteOrder(o.id); });
+  card.querySelectorAll('.status-btn').forEach(btn => { btn.onclick = safeClick(async (e) => { e.stopPropagation(); await handleStatusClick(o.id, btn.dataset.status); renderCurrentSection(); }); });
+  card.onclick = safeClick(() => openOrderEditor(o.id));
+  return card;
+}
+
+function openWa(digits) { if (!digits) return toast('Нет номера', 'warn'); window.open('https://wa.me/' + digits, '_blank'); }
+function openTg(digits) { if (!digits) return toast('Нет номера', 'warn'); window.open('https://t.me/+' + digits, '_blank'); }
+function openVk() { window.open('https://vk.com/im', '_blank'); }
+function openMax(digits) { if (!digits) return toast('Нет номера', 'warn'); window.open('https://max.ru/' + digits, '_blank'); }
+function openMail(digits) { window.open('mailto:' + (digits || ''), '_blank'); }
+function openMap(address) { if (!address) return toast('Нет адреса', 'warn'); window.open('https://yandex.ru/maps/?text=' + encodeURIComponent(address), '_blank'); }
+
+function renderAccounting() {
+  const wrap = document.getElementById('acc-orders'); if (!wrap) return;
+  wrap.innerHTML = ''; let list = allOrdersSorted(); const f = State.filters;
+  if (f.search) { const q = f.search.toLowerCase(); list = list.filter(o => String(o.orderNumber).toLowerCase().includes(q) || (o.fio || '').toLowerCase().includes(q) || (o.phone || '').toLowerCase().includes(q)); }
+  if (f.sort) list = list.filter(o => (o.bouquets || []).some(b => (b.sorts || []).some(s => s.sortId === f.sort)));
+  if (f.date) list = list.filter(o => (o.bouquets || []).some(b => b.date === f.date));
+  if (f.packaging) list = list.filter(o => (o.bouquets || []).some(b => b.packaging === f.packaging));
+  if (f.delivery === 'yes') list = list.filter(o => orderNeedsDelivery(o));
+  if (f.delivery === 'no') list = list.filter(o => !orderNeedsDelivery(o));
+  if (f.address) { const q = f.address.toLowerCase(); list = list.filter(o => (o.bouquets || []).some(b => (b.address || '').toLowerCase().includes(q))); }
+  if (!list.length) { wrap.innerHTML = '<div class="empty-state" style="grid-column:1/-1"><span class="emoji">📋</span>Заказов пока нет. Нажмите «+», чтобы создать.</div>'; return; }
+  list.forEach(o => wrap.appendChild(makeCardEl(o)));
+}
+
+function makeSquareEl(o, subtext, extraClass = '') {
+  const sq = document.createElement('div');
+  sq.className = 'square-card ' + extraClass + ' ' + (orderNeedsDelivery(o) ? 'delivery' : 'no-delivery');
+  sq.innerHTML = `<div>${escHtml(String(o.orderNumber))}</div><div class="sq-sub">${escHtml(subtext)}</div>`;
+  sq.onclick = safeClick((e) => { e.preventDefault(); e.stopPropagation(); openOrderViewer(o.id); });
+  return sq;
+}
+
+function renderPickup() {
+  const wrap = document.getElementById('pickup-grid'); if (!wrap) return;
+  wrap.innerHTML = ''; const list = allOrdersSorted();
+  if (!list.length) { wrap.innerHTML = '<div class="empty-state" style="grid-column:1/-1"><span class="emoji">📦</span>Заказов пока нет.</div>'; return; }
+  list.forEach(o => wrap.appendChild(makeSquareEl(o, (o.fio || '').split(' ')[0] || '')));
+}
+
+function sortRemain(sortId) {
+  const s = State.sorts[sortId]; if (!s) return 0;
+  let used = 0;
+  Object.values(State.orders).forEach(o => { (o.bouquets || []).forEach(b => { (b.sorts || []).forEach(sr => { if (sr.sortId === sortId) used += Number(sr.qty) || 0; }); }); });
+  return Math.max(0, (Number(s.total) || 0) - (Number(s.defect) || 0) - used);
+}
+function renderSorts() {
+  const wrap = document.getElementById('sorts-list'); if (!wrap) return;
+  wrap.innerHTML = ''; const list = Object.entries(State.sorts).map(([id, s]) => ({ id, ...s }));
+  if (!list.length) { wrap.innerHTML = '<div class="empty-state"><span class="emoji">🌷</span>Сортов пока нет. Нажмите «Добавить сорт».</div>'; return; }
+  list.forEach(s => {
+    const remain = sortRemain(s.id); const card = document.createElement('div');
+    card.className = 'sort-card';
+    card.innerHTML = `
+      <div class="sort-info">
+        <div class="sort-name">${escHtml(s.name)}</div>
+        <div class="sort-stats"><span>Всего: <b>${Number(s.total) || 0}</b></span><span class="defect">Брак: ${Number(s.defect) || 0}</span><span class="remain">Остаток: ${remain}</span></div>
+      </div>
+      <div class="sort-actions"><button class="btn icon-only" data-act="edit" title="Редактировать">✏️</button><button class="btn icon-only" data-act="del" title="Удалить" style="color:var(--danger)">🗑️</button></div>
+    `;
+    card.querySelector('[data-act="edit"]').onclick = safeClick(() => openSortEditor(s.id));
+    card.querySelector('[data-act="del"]').onclick = safeClick(() => deleteSort(s.id));
+    wrap.appendChild(card);
+  });
+}
+function openSortEditor(sortId) {
+  const isNew = !sortId; const s = isNew ? { name: '', total: 0, defect: 0 } : State.sorts[sortId];
+  const body = document.createElement('div');
+  body.innerHTML = `<div class="form-group"><label>Название сорта</label><input type="text" id="sort-name-input" value="${escHtml(s.name || '')}" placeholder="Например: Розовый"></div><div class="form-group"><label>Всего штук</label><input type="number" id="sort-total-input" value="${Number(s.total) || 0}" min="0"></div><div class="form-group"><label>Брак (штук)</label><input type="number" id="sort-defect-input" value="${Number(s.defect) || 0}" min="0"></div>`;
+  const footer = document.createElement('div'); footer.style.cssText = 'display:flex;gap:8px;justify-content:flex-end;width:100%';
+  const cancel = document.createElement('button'); cancel.className = 'btn'; cancel.textContent = 'Отмена';
+  const save = document.createElement('button'); save.className = 'btn primary'; save.textContent = 'Сохранить';
+  footer.append(cancel, save);
+  const m = Modal.open({ title: isNew ? 'Новый сорт' : 'Редактировать сорт', body, footer });
+  cancel.onclick = () => m.close();
+  save.onclick = safeClick(async () => {
+    const name = body.querySelector('#sort-name-input').value.trim(); const total = Number(body.querySelector('#sort-total-input').value) || 0; const defect = Number(body.querySelector('#sort-defect-input').value) || 0;
+    if (!name) return toast('Введите название', 'warn');
+    const id = sortId || uid(); const data = { name, total, defect, updatedAt: now(), createdBy: s.createdBy || CLIENT_ID };
+    State.sorts[id] = { ...data, id }; await Queue.push({ type: 'setSort', id, data }); await logAction((isNew ? 'Добавлен сорт: ' : 'Изменён сорт: ') + name); await makeSnapshot(); m.close(); renderSorts(); toast('Сохранено', 'success');
+  });
+}
+function deleteSort(sortId) {
+  Modal.confirm('Удалить сорт?', safeClick(async () => {
+    const name = State.sorts[sortId]?.name || ''; delete State.sorts[sortId];
+    await Queue.push({ type: 'delSort', id: sortId }); await logAction('Удалён сорт: ' + name); await makeSnapshot(); renderSorts(); toast('Удалено', 'success');
+  }));
+}
+
+async function renderPhotos() {
+  const wrap = document.getElementById('photos-grid'); if (!wrap) return;
+  wrap.innerHTML = ''; const map = {}; const keys = await IDB.keys('photos');
+  for (let i = 0; i < keys.length; i++) { const v = await IDB.get('photos', keys[i]); if (v) map[keys[i]] = v; }
+  State.photos = map; const sorts = Object.entries(State.sorts).map(([id, s]) => ({ id, ...s }));
+  if (!sorts.length) { wrap.innerHTML = '<div class="empty-state" style="grid-column:1/-1"><span class="emoji">📷</span>Сначала добавьте сорта.</div>'; return; }
+  sorts.forEach(s => {
+    const card = document.createElement('div'); card.className = 'photo-card'; const img = map[s.id];
+    card.innerHTML = `<div class="photo-img">${img ? `<img src="${img}" alt="${escHtml(s.name)}">` : '📷'}</div><div class="photo-name"><span>${escHtml(s.name)}</span><button class="btn icon-only" data-act="upload" title="Загрузить">⬆️</button></div>`;
+    const photoImgDiv = card.querySelector('.photo-img');
+    if (img) photoImgDiv.onclick = () => window.open(img, '_blank');
+    card.querySelector('[data-act="upload"]').onclick = safeClick(() => uploadPhoto(s.id));
+    wrap.appendChild(card);
+  });
+}
+function uploadPhoto(sortId) {
+  const input = document.createElement('input'); input.type = 'file'; input.accept = 'image/*';
+  input.onchange = async () => {
+    const file = input.files[0]; if (!file) return; const reader = new FileReader();
+    reader.onload = async () => {
+      const img = new Image();
+      img.onload = async () => {
+        const maxW = 800; const scale = Math.min(1, maxW / img.width); const canvas = document.createElement('canvas');
+        canvas.width = Math.round(img.width * scale); canvas.height = Math.round(img.height * scale);
+        const ctx = canvas.getContext('2d'); ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.7); await IDB.set('photos', sortId, dataUrl); toast('Фото сохранено', 'success'); renderPhotos();
+      }; img.src = reader.result;
+    }; reader.readAsDataURL(file);
+  }; input.click();
+}
+
+function renderDates() {
+  const wrap = document.getElementById('dates-list'); if (!wrap) return;
+  wrap.innerHTML = ''; const byDate = {};
+  Object.values(State.orders).forEach(o => { (o.bouquets || []).forEach(b => { if (b.date) { if (!byDate[b.date]) byDate[b.date] = []; byDate[b.date].push(o); } }); });
+  const dates = Object.keys(byDate).sort();
+  if (!dates.length) { wrap.innerHTML = '<div class="empty-state"><span class="emoji">📅</span>Дат пока нет.</div>'; return; }
+  dates.forEach(d => {
+    const block = document.createElement('div'); block.className = 'date-block';
+    block.innerHTML = `<h3>${escHtml(formatDateForDisplay(d))}</h3><div class="squares-grid"></div>`;
+    const grid = block.querySelector('.squares-grid'); const seen = new Set();
+    byDate[d].forEach(o => { if (seen.has(o.id)) return; seen.add(o.id); grid.appendChild(makeSquareEl(o, (o.fio || '').split(' ')[0] || '')); });
+    wrap.appendChild(block);
+  });
+}
+
+function renderDelivery() {
+  const wrap = document.getElementById('delivery-list'); if (!wrap) return;
+  wrap.innerHTML = ''; const byDate = {};
+  Object.values(State.orders).forEach(o => { (o.bouquets || []).forEach(b => { if (b.delivery === 'yes' && b.date) { if (!byDate[b.date]) byDate[b.date] = []; byDate[b.date].push({ o, b }); } }); });
+  const dates = Object.keys(byDate).sort();
+  if (!dates.length) { wrap.innerHTML = '<div class="empty-state"><span class="emoji">🚚</span>Доставок пока нет.</div>'; return; }
+  dates.forEach(d => {
+    byDate[d].sort((a, b) => (a.b.time || '99:99').localeCompare(b.b.time || '99:99'));
+    const block = document.createElement('div'); block.className = 'date-block';
+    block.innerHTML = `<h3>${escHtml(formatDateForDisplay(d))}</h3><div class="squares-grid"></div>`;
+    const grid = block.querySelector('.squares-grid'); const seen = new Set();
+    byDate[d].forEach(({ o, b }) => { const key = o.id + '_' + (b.time || ''); if (seen.has(key)) return; seen.add(key); grid.appendChild(makeSquareEl(o, b.time || '--', 'delivery')); });
+    wrap.appendChild(block);
+  });
+}
+
+function buildExcelRows() {
+  const rows = [];
+  allOrdersSorted().forEach(o => {
+    (o.bouquets || []).forEach((b, bi) => {
+      (b.sorts || []).forEach((s) => {
+        const sortName = State.sorts[s.sortId]?.name || s.sortName || '';
+        rows.push({ '№ заказа': String(o.orderNumber), 'Букет': bi + 1, 'ФИО': o.fio || '', 'Телефон': o.phone || '', 'Сорт': sortName, 'Количество': s.qty, 'Упаковка': b.packaging || '', 'Дата': formatDateForDisplay(b.date), 'Время': b.time || '', 'Доставка': b.delivery === 'yes' ? 'Да' : 'Нет', 'Адрес': b.address || '', 'Собран': b.assembled || 'no', 'Выдан': b.issued || 'no', 'Оплачен': b.paid || 'no', 'Сумма': o.sum || '' });
+      });
+    });
+  });
+
+  const remains = buildRemainsRows();
+  if (remains.length) {
+    rows.push({});
+    rows.push({ '№ заказа': 'ОСТАТКИ СОРТОВ НА МОМЕНТ ЭКСПОРТА' });
+    remains.forEach(r => {
+      rows.push({
+        '№ заказа': '',
+        'Букет': '',
+        'ФИО': '',
+        'Телефон': '',
+        'Сорт': r['Сорт'],
+        'Количество': r['Всего'],
+        'Упаковка': '',
+        'Дата': '',
+        'Время': '',
+        'Доставка': '',
+        'Адрес': '',
+        'Собран': '',
+        'Выдан': '',
+        'Оплачен': r['Брак'],
+        'Сумма': r['Остаток']
+      });
+    });
+  }
+  return rows;
+}
+function buildRemainsRows() {
+  const rows = [];
+  Object.entries(State.sorts).forEach(([id, s]) => { const remain = sortRemain(id); rows.push({ 'Сорт': s.name, 'Всего': Number(s.total) || 0, 'Брак': Number(s.defect) || 0, 'Остаток': remain }); });
+  return rows;
+}
+function renderExcel() {
+  const rows = buildExcelRows(); const pt = document.getElementById('xls-preview-table'); const rem = document.getElementById('xls-remains-table');
+  if (pt) {
+    const head = pt.querySelector('thead'); const body = pt.querySelector('tbody'); head.innerHTML = ''; body.innerHTML = '';
+    if (rows.length) {
+      const cols = Object.keys(rows[0]); const tr = document.createElement('tr');
+      cols.forEach(c => { const th = document.createElement('th'); th.textContent = c; tr.appendChild(th); }); head.appendChild(tr);
+      rows.slice(0, 100).forEach(r => { const trr = document.createElement('tr'); cols.forEach(c => { const td = document.createElement('td'); td.textContent = r[c]; trr.appendChild(td); }); body.appendChild(trr); });
+    }
+  }
+  if (rem) {
+    const rows2 = buildRemainsRows(); const head = rem.querySelector('thead'); const body = rem.querySelector('tbody'); head.innerHTML = ''; body.innerHTML = '';
+    if (rows2.length) {
+      const cols = Object.keys(rows2[0]); const tr = document.createElement('tr');
+      cols.forEach(c => { const th = document.createElement('th'); th.textContent = c; tr.appendChild(th); }); head.appendChild(tr);
+      rows2.forEach(r => { const trr = document.createElement('tr'); cols.forEach(c => { const td = document.createElement('td'); td.textContent = r[c]; trr.appendChild(td); }); body.appendChild(trr); });
+    }
+  }
+}
+
+function emptyBouquet() { return { qty: 1, packaging: 'Корейская', sorts: [], date: '', time: '', delivery: 'no', address: '', assembled: 'no', issued: 'no', paid: 'no' }; }
+async function nextOrderNumber() {
+  let max = 0; Object.values(State.orders).forEach(o => { const n = parseOrderNum(o.orderNumber); if (n > max) max = n; });
+  return max + 1;
+}
+async function checkCollision(orderNumber, myId) {
+  const conflict = Object.values(State.orders).find(o => o.id !== myId && parseOrderNum(o.orderNumber) === parseOrderNum(orderNumber));
+  if (conflict) {
+    let suffix = 1;
+    while (Object.values(State.orders).some(o => parseOrderNum(o.orderNumber) === parseOrderNum(orderNumber + '.' + suffix))) suffix++;
+    return String(orderNumber) + '.' + suffix;
+  }
+  return String(orderNumber);
+}
+
+function pickNumber(current, onPick) {
+  const body = document.createElement('div');
+  const list = document.createElement('div'); list.className = 'choice-list';
+  for (let i = 1; i <= 100; i++) {
+    const btn = document.createElement('button'); btn.textContent = i;
+    if (Number(current) === i) { btn.style.background = 'var(--primary)'; btn.style.color = 'var(--primary-text)'; btn.style.borderColor = 'var(--primary)'; }
+    btn.onclick = () => { m.close(); onPick(i); };
+    list.appendChild(btn);
+  }
+  body.appendChild(list);
+  const m = Modal.open({ title: 'Количество букетов', body });
+}
+
+function pickTime(current, onPick) {
+  let selected = current || '';
+  const body = document.createElement('div');
+  const list = document.createElement('div');
+  list.className = 'choice-list';
+  list.style.maxHeight = '400px';
+  list.style.overflowY = 'auto';
+
+  let targetScrollBtn = null;
+  const btns = [];
+  
+  for (let h = 0; h < 24; h++) {
+    for (let m = 0; m < 60; m += 30) {
+      const t = String(h).padStart(2,'0') + ':' + String(m).padStart(2,'0');
+      const btn = document.createElement('button');
+      btn.textContent = t;
+      if (selected === t) { btn.style.background = 'var(--primary)'; btn.style.color = 'var(--primary-text)'; btn.style.borderColor = 'var(--primary)'; }
+      if (t === '06:00' && !selected) targetScrollBtn = btn;
+      
+      btn.onclick = () => {
+        btns.forEach(b => { b.style.background = ''; b.style.color = ''; b.style.borderColor = ''; });
+        btn.style.background = 'var(--primary)'; btn.style.color = 'var(--primary-text)'; btn.style.borderColor = 'var(--primary)';
+        selected = t;
+      };
+      
+      btns.push(btn);
+      list.appendChild(btn);
+    }
+  }
+  body.appendChild(list);
+  
+  const footer = document.createElement('div');
+  footer.style.cssText = 'display:flex;gap:8px;justify-content:flex-end;width:100%;';
+  const cancelBtn = document.createElement('button'); cancelBtn.className = 'btn'; cancelBtn.textContent = 'Отмена';
+  const okBtn = document.createElement('button'); okBtn.className = 'btn primary'; okBtn.textContent = 'ОК';
+  footer.append(cancelBtn, okBtn);
+
+  const m = Modal.open({ title: 'Время выдачи', body, footer });
+  
+  cancelBtn.onclick = () => m.close();
+  okBtn.onclick = () => { m.close(); onPick(selected); };
+  
+  setTimeout(() => {
+    if (selected) {
+      for (let b of btns) { if (b.textContent === selected) { b.scrollIntoView({ block: 'center' }); break; } }
+    } else if (targetScrollBtn) {
+      targetScrollBtn.scrollIntoView({ block: 'start' });
+    }
+  }, 50);
+}
+
+function openOrderViewer(orderId) {
+  const o = State.orders[orderId]; if (!o) return;
+  const phoneDigitsStr = phoneDigits(o.phone || '');
+  const addressStr = (o.bouquets || []).find(b => b.delivery === 'yes')?.address || '';
+  
+  const body = document.createElement('div');
+  body.style.cssText = 'display:flex;flex-direction:column;gap:12px;';
+  
+  const renderContent = () => {
+    const currentOrder = State.orders[orderId];
+    if (!currentOrder) return;
+    const st = orderStatuses(currentOrder);
+    const firstBouquet = currentOrder.bouquets && currentOrder.bouquets[0] ? currentOrder.bouquets[0] : {};
+
+    body.innerHTML = `
+      <div style="font-size:var(--font-size-lg);font-weight:bold;color:var(--primary);">Заказ № ${escHtml(String(currentOrder.orderNumber))}</div>
+      <div style="font-size:var(--font-size-lg);font-weight:600;">${escHtml(currentOrder.fio || 'Без имени')}</div>
+      <div class="phone-row" style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;font-size:var(--font-size-sm);">
+        <a class="phone-link" href="tel:${escHtml(normalizePhone(currentOrder.phone || ''))}" style="color:var(--info);text-decoration:none;">${escHtml(currentOrder.phone || '--')}</a>
+        <div class="messengers" style="display:flex;gap:4px;">
+          <button class="msg-btn wa" style="width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:16px;background:var(--bg-hover);color:#25D366;"><i class="fa-brands fa-whatsapp"></i></button>
+          <button class="msg-btn tg" style="width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:16px;background:var(--bg-hover);color:#229ED9;"><i class="fa-brands fa-telegram"></i></button>
+          <button class="msg-btn vk" style="width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:16px;background:var(--bg-hover);color:#4C75A3;"><i class="fa-brands fa-vk"></i></button>
+          <button class="msg-btn max" style="width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:16px;background:var(--bg-hover);color:#7B68EE;"><i class="fa-solid fa-comment-dots"></i></button>
+          <button class="msg-btn mail" style="width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:16px;background:var(--bg-hover);color:var(--text-muted);"><i class="fa-solid fa-envelope"></i></button>
+        </div>
+      </div>
+      <div style="background:var(--bg-hover);padding:12px;border-radius:8px;font-size:var(--font-size-sm);line-height:1.5;">
+        ${escHtml(bouquetSummary(currentOrder) || 'Букеты не добавлены')}
+      </div>
+      <div style="font-size:var(--font-size-sm);color:var(--text-muted);line-height:1.6;">
+        📅 Дата: ${firstBouquet.date ? escHtml(formatDateForDisplay(firstBouquet.date)) : '--'} <br>
+        ⏰ Время: ${firstBouquet.time ? escHtml(firstBouquet.time) : '--'} <br>
+        🚚 Доставка: ${orderNeedsDelivery(currentOrder) ? 'Да' : 'Нет'} <br>
+        ${addressStr ? `📍 Адрес: <a href="#" class="map-link" style="color:var(--info);text-decoration:underline;">${escHtml(addressStr)}</a><br>` : ''}
+        💰 Сумма: ${escHtml(String(currentOrder.sum || '--'))}
+      </div>
+      <div class="status-row" style="display:grid;grid-template-columns:repeat(3, 1fr);gap:4px;margin-top:8px;">
+        <button class="status-btn" data-status="assembled" data-state="${st.assembled}">Собран</button>
+        <button class="status-btn" data-status="issued" data-state="${st.issued}">Выдан</button>
+        <button class="status-btn" data-status="paid" data-state="${st.paid}">Оплачен</button>
+      </div>
+    `;
+    
+    body.querySelector('.msg-btn.wa').onclick = safeClick((e) => { e.stopPropagation(); openWa(phoneDigitsStr); });
+    body.querySelector('.msg-btn.tg').onclick = safeClick((e) => { e.stopPropagation(); openTg(phoneDigitsStr); });
+    body.querySelector('.msg-btn.vk').onclick = safeClick((e) => { e.stopPropagation(); openVk(); });
+    body.querySelector('.msg-btn.max').onclick = safeClick((e) => { e.stopPropagation(); openMax(phoneDigitsStr); });
+    body.querySelector('.msg-btn.mail').onclick = safeClick((e) => { e.stopPropagation(); openMail(phoneDigitsStr); });
+    
+    const mapLink = body.querySelector('.map-link');
+    if (mapLink) mapLink.onclick = safeClick((e) => { e.preventDefault(); e.stopPropagation(); openMap(addressStr); });
+    
+    body.querySelectorAll('.status-btn').forEach(btn => {
+      btn.onclick = safeClick(async (e) => {
+        e.stopPropagation();
+        await handleStatusClick(orderId, btn.dataset.status);
+        renderContent();
+        renderCurrentSection();
+      });
+    });
+  };
+
+  renderContent();
+
+  const footer = document.createElement('div');
+  footer.style.cssText = 'display:flex;gap:8px;justify-content:flex-end;width:100%';
+  const editBtn = document.createElement('button');
+  editBtn.className = 'btn primary';
+  editBtn.textContent = 'Редактировать';
+  footer.appendChild(editBtn);
+
+  const m = Modal.open({ title: 'Просмотр заказа', body, footer });
+
+  editBtn.addEventListener('click', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    m.close();
+    setTimeout(() => {
+      try { openOrderEditor(orderId); }
+      catch (err) { console.error('openOrderEditor failed:', err); toast('Ошибка открытия редактора: ' + err.message, 'error'); }
+    }, 200);
+  });
+}
+
+function openOrderEditor(orderId) {
+  const isNew = !orderId;
+  let o;
+  if (isNew) {
+    o = { orderNumber: null, fio: '', phone: '', bouquets: [emptyBouquet()], sum: '' };
+  } else {
+    const src = State.orders[orderId];
+    if (!src) { toast('Заказ не найден (возможно, удалён)', 'warn'); return; }
+    try {
+      o = deepClone(src);
+    } catch (err) {
+      console.error('deepClone failed:', err, src);
+      o = Object.assign({}, src);
+      if (o.bouquets) o.bouquets = o.bouquets.map(b => Object.assign({}, b));
+    }
+    o.id = orderId;
+  }
+  
+  if (!o.bouquets || !Array.isArray(o.bouquets) || o.bouquets.length === 0) o.bouquets = [emptyBouquet()];
+
+  // Защита от отсутствующих полей в старых заказах
+  o.bouquets.forEach(b => {
+    if (!b.sorts || !Array.isArray(b.sorts)) b.sorts = [];
+  });
+
+  const body = document.createElement('div'); body.style.cssText = 'display:flex;flex-direction:column;gap:8px';
+  
+  let maxNum = 0;
+  Object.values(State.orders).forEach(ord => { const n = parseOrderNum(ord.orderNumber); if (n > maxNum) maxNum = n; });
+  const nextNum = maxNum + 1;
+
+  const numEl = document.createElement('div'); numEl.className = 'form-group';
+  numEl.innerHTML = `<label>Номер заказа</label><input type="text" id="ord-num" value="${isNew ? '' : escHtml(String(o.orderNumber))}" placeholder="${isNew ? 'Следующий: ' + nextNum : ''}">`;
+  body.appendChild(numEl);
+  
+  const fioEl = document.createElement('div'); fioEl.className = 'form-group';
+  fioEl.innerHTML = `<label>ФИО</label><input type="text" id="ord-fio" value="${escHtml(o.fio || '')}" placeholder="Иванов Иван Иванович">`;
+  body.appendChild(fioEl);
+  const phEl = document.createElement('div'); phEl.className = 'form-group';
+  phEl.innerHTML = `<label>Телефон</label><input type="tel" id="ord-phone" value="${escHtml(o.phone || '')}" placeholder="+7 900 000-00-00">`;
+  body.appendChild(phEl);
+  const bouquetsWrap = document.createElement('div'); bouquetsWrap.id = 'bouquets-wrap'; body.appendChild(bouquetsWrap);
+  const addBouquetBtn = document.createElement('button'); addBouquetBtn.className = 'btn'; addBouquetBtn.textContent = '➕ Букет';
+  addBouquetBtn.onclick = safeClick(() => { o.bouquets.push(emptyBouquet()); renderBouquets(); });
+  body.appendChild(addBouquetBtn);
+  const sumEl = document.createElement('div'); sumEl.className = 'form-group mt-8';
+  sumEl.innerHTML = `<label>Сумма</label><input type="text" id="ord-sum" value="${escHtml(String(o.sum || ''))}" placeholder="Например: 5000">`;
+  body.appendChild(sumEl);
+
+  function renderBouquets() {
+    bouquetsWrap.innerHTML = '';
+    o.bouquets.forEach((b, bi) => {
+      const block = document.createElement('div'); block.className = 'bouquet-block';
+      block.innerHTML = `
+        <div class="bouquet-header"><h4>Букет ${bi + 1}</h4><button class="btn icon-only" data-del-bouquet style="color:var(--danger)">🗑️</button></div>
+        <div class="form-group"><label>Количество букетов</label><button class="btn" data-qty-btn style="width:100%;justify-content:space-between;"><span data-qty-val>${b.qty || 1}</span><span style="opacity:.6">▼</span></button></div>
+        <div class="form-group"><label>Упаковка</label><div class="toggle-group" data-packaging><button data-val="Корейская">Корейская</button><button data-val="Прозрачная">Прозрачная</button><button data-val="Пачка">Пачка</button></div></div>
+        <div class="form-group"><label>Сорта</label><div class="sorts-list" data-sorts-list></div><button class="btn mt-8" data-add-sort>➕ Сорт</button></div>
+        <div class="form-group"><label>Дата</label><input type="date" data-date value="${escHtml(b.date || '')}"></div>
+        <div class="form-group"><label>Время</label><button class="btn" data-time-btn style="width:100%;justify-content:space-between;"><span data-time-val>${b.time || '--'}</span><span style="opacity:.6">▼</span></button></div>
+        <div class="form-group"><label>Доставка</label><div class="toggle-group" data-delivery><button data-val="no" class="${b.delivery === 'no' ? 'active' : ''}">Нет</button><button data-val="yes" class="${b.delivery === 'yes' ? 'active' : ''}">Да</button></div></div>
+        ${b.delivery === 'yes' ? `<div class="form-group"><label>Адрес</label><input type="text" data-address value="${escHtml(b.address || '')}" placeholder="ул. ..."></div>` : ''}
+      `;
+      if (!b.qty) b.qty = 1;
+      block.querySelector('[data-qty-btn]').onclick = safeClick(() => { pickNumber(b.qty, (n) => { b.qty = n; block.querySelector('[data-qty-val]').textContent = n; }); });
+      block.querySelector('[data-time-btn]').onclick = safeClick(() => { pickTime(b.time, (t) => { b.time = t; block.querySelector('[data-time-val]').textContent = t || '--'; }); });
+      block.querySelectorAll('[data-packaging] button').forEach(btn => {
+        if (b.packaging === btn.dataset.val) btn.classList.add('active');
+        btn.onclick = safeClick(() => { b.packaging = btn.dataset.val; block.querySelectorAll('[data-packaging] button').forEach(x => x.classList.remove('active')); btn.classList.add('active'); });
+      });
+      const sortsList = block.querySelector('[data-sorts-list]');
+      function renderSortRows() {
+        sortsList.innerHTML = '';
+        if (!b.sorts || !Array.isArray(b.sorts)) b.sorts = [];
+        if (!b.sorts.length) b.sorts.push({ sortId: '', qty: 0 });
+        b.sorts.forEach((sr, si) => {
+          const row = document.createElement('div'); row.className = 'sort-row';
+          const sel = document.createElement('select');
+          const emptyOpt = document.createElement('option'); emptyOpt.value = ''; emptyOpt.textContent = '-- выберите сорт --';
+          if (!sr.sortId) emptyOpt.selected = true;
+          sel.appendChild(emptyOpt);
+          Object.entries(State.sorts).forEach(([sid, s]) => { const opt = document.createElement('option'); opt.value = sid; opt.textContent = s.name; if (sr.sortId === sid) opt.selected = true; sel.appendChild(opt); });
+          sel.onchange = () => { sr.sortId = sel.value; };
+          const qty = document.createElement('input'); qty.type = 'number'; qty.min = 0;
+          qty.value = (sr.qty === 0 || sr.qty === '0') ? '' : sr.qty; 
+          qty.oninput = () => { sr.qty = Number(qty.value) || 0; };
+          const del = document.createElement('button'); del.className = 'sort-del'; del.textContent = '✕';
+          del.onclick = safeClick(() => { b.sorts.splice(si, 1); renderSortRows(); });
+          row.append(sel, qty, del); sortsList.appendChild(row);
+        });
+      }
+      renderSortRows();
+      block.querySelector('[data-add-sort]').onclick = safeClick(() => { if (!b.sorts) b.sorts = []; b.sorts.push({ sortId: '', qty: 0 }); renderSortRows(); });
+      block.querySelector('[data-date]').onchange = (e) => { b.date = e.target.value; };
+      block.querySelectorAll('[data-delivery] button').forEach(btn => {
+        btn.onclick = safeClick(() => { b.delivery = btn.dataset.val; const temp = body.scrollTop; renderBouquets(); body.scrollTop = temp; });
+      });
+      const addrInput = block.querySelector('[data-address]'); if (addrInput) addrInput.oninput = (e) => { b.address = e.target.value; };
+      block.querySelector('[data-del-bouquet]').onclick = safeClick(() => { if (o.bouquets.length <= 1) return toast('Должен быть хотя бы один букет', 'warn'); o.bouquets.splice(bi, 1); renderBouquets(); });
+      bouquetsWrap.appendChild(block);
+    });
+  }
+  renderBouquets();
+
+  const footer = document.createElement('div'); footer.style.cssText = 'display:flex;gap:8px;justify-content:flex-end;width:100%';
+  const cancel = document.createElement('button'); cancel.className = 'btn'; cancel.textContent = 'Отмена';
+  const save = document.createElement('button'); save.className = 'btn primary'; save.textContent = 'Сохранить';
+  footer.append(cancel, save);
+  const m = Modal.open({ title: isNew ? 'Новый заказ' : ('Заказ №' + o.orderNumber), body, footer, large: true });
+  cancel.onclick = () => m.close();
+  
+  save.onclick = safeClick(async () => {
+    o.fio = body.querySelector('#ord-fio').value.trim(); o.phone = body.querySelector('#ord-phone').value.trim(); o.sum = body.querySelector('#ord-sum').value.trim();
+    if (!o.fio) return toast('Введите ФИО', 'warn');
+    
+    const newBouquets = [];
+    o.bouquets.forEach(b => {
+      const count = b.qty || 1;
+      for (let i = 0; i < count; i++) {
+        const clone = deepClone(b); clone.qty = 1; newBouquets.push(clone);
+      }
+    });
+    o.bouquets = newBouquets;
+    o.bouquets.forEach(b => { b.sorts = (b.sorts || []).filter(s => s.sortId && s.qty > 0); });
+    
+    const inputNum = body.querySelector('#ord-num').value.trim();
+    
+    if (isNew) {
+      let finalNum = inputNum;
+      if (!finalNum) finalNum = await nextOrderNumber();
+      const checkedNum = await checkCollision(finalNum, null);
+      if (String(checkedNum) !== String(finalNum)) {
+        const notifId = uid(); const text = 'Произошла накладка: заказ получил номер ' + checkedNum + '. Проверьте заказы.';
+        await Queue.push({ type: 'notify', id: notifId, data: { text, to: [CLIENT_ID], ts: now(), seenBy: {} } });
+        toast(text, 'warn', 6000);
+      }
+      o.orderNumber = checkedNum; o.id = uid(); o.createdAt = now(); o.createdBy = CLIENT_ID; 
+      State.orders[o.id] = o; await Queue.push({ type: 'setOrder', id: o.id, data: o }); await logAction('Создан заказ №' + o.orderNumber); await makeSnapshot();
+      m.close(); renderCurrentSection(); toast('Сохранено', 'success');
+    } else {
+      if (inputNum && inputNum !== String(o.orderNumber)) {
+        Modal.confirm('Вы уверены, что хотите изменить номер заказа?', async () => {
+          o.orderNumber = inputNum; o.updatedAt = now();
+          State.orders[orderId] = o; await Queue.push({ type: 'setOrder', id: orderId, data: o }); await logAction('Изменён заказ №' + o.orderNumber); await makeSnapshot();
+          m.close(); renderCurrentSection(); toast('Сохранено', 'success');
+        });
+      } else {
+        o.updatedAt = now();
+        State.orders[orderId] = o; await Queue.push({ type: 'setOrder', id: orderId, data: o }); await logAction('Изменён заказ №' + o.orderNumber); await makeSnapshot();
+        m.close(); renderCurrentSection(); toast('Сохранено', 'success');
+      }
+    }
+  });
+}
+
+async function deleteOrder(orderId) {
+  const o = State.orders[orderId]; if (!o) return;
+  Modal.confirm('Вы уверены, что хотите удалить заказ №' + o.orderNumber + '?', safeClick(async () => {
+    delete State.orders[orderId]; await Queue.push({ type: 'delOrder', id: orderId }); await logAction('Удалён заказ №' + o.orderNumber); await makeSnapshot(); renderCurrentSection(); toast('Удалено', 'success');
+  }));
+}
+
+async function handleStatusClick(orderId, statusKey) {
+  const o = State.orders[orderId]; if (!o) return;
+  const bouquets = o.bouquets || [];
+  if (bouquets.length === 1) {
+    const cur = bouquets[0][statusKey] || 'no'; const next = cur === 'no' ? 'yes' : 'no';
+    bouquets[0][statusKey] = next; o.updatedAt = now(); State.orders[orderId] = o;
+    await Queue.push({ type: 'setOrder', id: orderId, data: o }); await logAction('Статус «' + statusLabel(statusKey) + '» заказа №' + o.orderNumber + ': ' + (next === 'yes' ? 'да' : 'нет'));
+    renderCurrentSection(); return;
+  }
+  
+  return new Promise((resolve) => {
+    const body = document.createElement('div');
+    body.innerHTML = `<p>Отметьте нужные букеты для статуса «${statusLabel(statusKey)}»:</p>`;
+    const list = document.createElement('div'); list.className = 'choice-list';
+    
+    const checkboxes = bouquets.map((b, i) => {
+      const isChecked = (b[statusKey] === 'yes');
+      const lbl = document.createElement('label');
+      lbl.style.cssText = 'display:flex;align-items:center;gap:8px;padding:10px;border:1px solid var(--border);border-radius:var(--radius-sm);cursor:pointer;font-size:var(--font-size);';
+      lbl.innerHTML = `<input type="checkbox" style="width:20px;height:20px;" ${isChecked ? 'checked' : ''}> Букет ${i + 1}`;
+      list.appendChild(lbl);
+      return { idx: i, input: lbl.querySelector('input') };
+    });
+    body.appendChild(list);
+
+    const footer = document.createElement('div');
+    footer.style.cssText = 'display:flex;gap:8px;justify-content:flex-end;width:100%;flex-wrap:wrap;';
+    const btnAll = document.createElement('button'); btnAll.className = 'btn'; btnAll.textContent = 'Выбрать все';
+    const btnNone = document.createElement('button'); btnNone.className = 'btn'; btnNone.textContent = 'Сбросить все';
+    const cancelBtn = document.createElement('button'); cancelBtn.className = 'btn'; cancelBtn.textContent = 'Отмена';
+    const okBtn = document.createElement('button'); okBtn.className = 'btn primary'; okBtn.textContent = 'ОК';
+    footer.append(btnAll, btnNone, cancelBtn, okBtn);
+
+    const m = Modal.open({ 
+      title: 'Статус «' + statusLabel(statusKey) + '»', 
+      body, footer,
+      onClose: () => resolve()
+    });
+    btnAll.onclick = () => checkboxes.forEach(({ input }) => input.checked = true);
+    btnNone.onclick = () => checkboxes.forEach(({ input }) => input.checked = false);
+    cancelBtn.onclick = () => m.close();
+    okBtn.onclick = safeClick(async () => {
+      checkboxes.forEach(({ idx, input }) => { bouquets[idx][statusKey] = input.checked ? 'yes' : 'no'; });
+      o.updatedAt = now(); State.orders[orderId] = o;
+      await Queue.push({ type: 'setOrder', id: orderId, data: o });
+      await logAction('Статус «' + statusLabel(statusKey) + '» заказа №' + o.orderNumber + ' обновлён');
+      m.close();
+      renderCurrentSection();
+      renderAccounting();
+      resolve();
+    });
+  });
+}
+function statusLabel(key) { return { assembled: 'Собран', issued: 'Выдан', paid: 'Оплачен' }[key] || key; }
+
+function renderSynclog() {
+  const wrap = document.getElementById('synclog-list'); if (!wrap) return;
+  wrap.innerHTML = ''; if (!State.synclog.length) { wrap.innerHTML = '<div class="empty-state"><span class="emoji">🔄</span>Журнал пуст.</div>'; return; }
+  State.synclog.forEach(l => { const li = document.createElement('li'); li.className = 'log-item'; li.innerHTML = `<span class="log-msg">${escHtml(l.msg)}</span><span class="log-time">${fmtDateTime(l.ts)}</span>`; wrap.appendChild(li); });
+}
+function renderActionlog() {
+  const wrap = document.getElementById('actionlog-list'); if (!wrap) return;
+  wrap.innerHTML = ''; if (!State.actionLog.length) { wrap.innerHTML = '<div class="empty-state"><span class="emoji">🕓</span>Действий пока не было.</div>'; return; }
+  State.actionLog.forEach(l => {
+    const li = document.createElement('li'); li.className = 'log-item clickable';
+    li.innerHTML = `<span class="log-msg">${escHtml(l.msg)}</span><span class="log-time">${fmtDateTime(l.ts)}</span>`;
+    li.onclick = () => confirmRollback(l.ts); wrap.appendChild(li);
+  });
+}
+function confirmRollback(targetTs) {
+  Modal.pin(async () => {
+    const snap = State.snapshots.find(s => s.ts <= targetTs) || State.snapshots[State.snapshots.length - 1];
+    if (!snap) return Modal.alert('Снапшот не найден');
+    Modal.confirm('Откатить все данные до ' + fmtDateTime(snap.ts) + '? Это затронет всех пользователей.', async () => {
+      State.orders = deepClone(snap.orders || {}); State.sorts = deepClone(snap.sorts || {});
+      await Queue.push({ type: 'rollback', id: uid(), targetTs: snap.ts, orders: State.orders, sorts: State.sorts });
+      await logAction('Откат до ' + fmtDateTime(snap.ts)); await makeSnapshot(); toast('Откат выполнен', 'success'); renderCurrentSection();
+    });
+  }, 'PIN для отката');
+}
+function buildWorkbook() {
+  if (!window.XLSX) { toast('Excel-библиотека ещё загружается', 'warn'); return null; }
+  const wb = XLSX.utils.book_new();
+  const rows = buildExcelRows();
+  const ws = XLSX.utils.json_to_sheet(rows.length ? rows : [{ 'Нет данных': '' }]);
+  XLSX.utils.book_append_sheet(wb, ws, 'Заказы');
+  return wb;
+}
+function downloadExcel() {
+  const wb = buildWorkbook(); if (!wb) return;
+  const fname = 'tulips_' + dateKey(now()) + '.xlsx'; XLSX.writeFile(wb, fname); logAction('Скачан Excel: ' + fname); toast('Excel скачан', 'success');
+}
+async function shareExcel() {
+  const wb = buildWorkbook(); if (!wb) return;
+  const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+  const blob = new Blob([wbout], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+  const file = new File([blob], 'tulips_' + dateKey(now()) + '.xlsx', { type: blob.type });
+  if (navigator.canShare && navigator.canShare({ files: [file] })) {
+    try { await navigator.share({ files: [file], title: 'Тюльпаны -- Excel' }); logAction('Excel отправлен через «Поделиться»'); } catch (e) { console.warn(e); }
+  } else { downloadExcel(); toast('Файл скачан (шаринг недоступен)', 'warn'); }
+}
+async function checkConnection() {
+  toast('Пробую отправить очередь…'); await Queue.process();
+  const body = document.createElement('div'); body.innerHTML = `<div class="ping-window" id="ping-out"></div>`;
+  const footer = document.createElement('div'); footer.style.cssText = 'display:flex;gap:8px;justify-content:flex-end;width:100%';
+  const ok = document.createElement('button'); ok.className = 'btn primary'; ok.textContent = 'OK';
+  const pingBtn = document.createElement('button'); pingBtn.className = 'btn'; pingBtn.textContent = 'Ping';
+  footer.append(pingBtn, ok);
+  const m = Modal.open({ title: 'Проверка соединения', body, footer }); ok.onclick = () => m.close();
+  const out = body.querySelector('#ping-out');
+  function line(text, cls = '') { const d = document.createElement('div'); d.className = 'line ' + cls; d.textContent = text; out.appendChild(d); out.scrollTop = out.scrollHeight; }
+  async function runPing() {
+    out.innerHTML = ''; line('> ПРОВЕРКА СИСТЕМЫ', 'info');
+    line('> navigator.onLine: ' + (navigator.onLine ? 'ONLINE' : 'OFFLINE'), navigator.onLine ? 'ok' : 'err');
+    line('> URL: ' + FIREBASE_DB_URL, 'info');
+    const t0 = performance.now();
+    try { const res = await fetch(FIREBASE_PING_URL + '&_=' + Date.now(), { cache: 'no-store' }); const ms = Math.round(performance.now() - t0); if (res.ok) line('> Firebase: OK (' + ms + ' ms)', 'ok'); else line('> Firebase: HTTP ' + res.status, 'err'); } catch (e) { line('> Firebase: ОШИБКА (' + e.message + ')', 'err'); }
+    line('> Локальные данные: ' + Object.keys(State.orders).length + ' заказов, ' + Object.keys(State.sorts).length + ' сортов', 'info');
+    line('> В очереди на отправку: ' + State.pendingCount, State.pendingCount ? 'warn' : 'ok');
+    line('> Последняя синхронизация: ' + (State.lastSyncAt ? fmtDateTime(State.lastSyncAt) : 'никогда'), 'info');
+  }
+  pingBtn.onclick = async () => { line('--- PING ---', 'info'); for (let i = 0; i < 3; i++) { const t0 = performance.now(); try { const res = await fetch(FIREBASE_PING_URL + '&_=' + Date.now(), { cache: 'no-store' }); const ms = Math.round(performance.now() - t0); line('  ping #' + (i+1) + ': ' + (res.ok ? ms + ' ms' : 'HTTP ' + res.status), res.ok ? 'ok' : 'err'); } catch (e) { line('  ping #' + (i+1) + ': ошибка', 'err'); } } };
+  runPing();
+}
+async function backupSave() {
+  Modal.pin(async () => {
+    const data = { version: 1, ts: now(), orders: State.orders, sorts: State.sorts };
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const fname = 'tulips_backup_' + dateKey(now()) + '.json'; const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob); a.download = fname; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+    await logAction('Создана резервная копия: ' + fname); toast('Резервная копия сохранена', 'success');
+  }, 'PIN для сохранения');
+}
+async function backupLoad() {
+  Modal.pin(() => {
+    const input = document.createElement('input'); input.type = 'file'; input.accept = 'application/json,.json';
+    input.onchange = async () => {
+      const file = input.files[0]; if (!file) return;
+      try {
+        const text = await file.text(); const data = JSON.parse(text);
+        if (!data.orders || !data.sorts) throw new Error('Неверный формат');
+        Modal.confirm('Загрузить данные из файла? Текущие данные будут заменены.', async () => {
+          State.orders = data.orders; State.sorts = data.sorts;
+          for (const [id, o] of Object.entries(State.orders)) await Queue.push({ type: 'setOrder', id, data: o });
+          for (const [id, s] of Object.entries(State.sorts)) await Queue.push({ type: 'setSort', id, data: s });
+          await logAction('Загружена резервная копия от ' + fmtDateTime(data.ts)); toast('Данные загружены', 'success'); renderCurrentSection();
+        });
+      } catch (e) { toast('Ошибка: ' + e.message, 'error'); }
+    };
+    input.click();
+  }, 'PIN для загрузки');
+}
+function switchSection(name) {
+  State.currentSection = name;
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  const sec = document.getElementById('section-' + name); if (sec) sec.classList.add('active');
+  document.querySelectorAll('.menu-item').forEach(m => m.classList.toggle('active', m.dataset.section === name));
+  const titleMap = { accounting: 'Учёт', pickup: 'Сбор-выдача', sorts: 'Сорта', photos: 'Фото сортов', dates: 'Даты выдачи', delivery: 'Доставка', excel: 'Excel', settings: 'Настройки', synclog: 'Журнал синхронизации', actionlog: 'Журнал действий' };
+  document.getElementById('header-title').textContent = titleMap[name] || name; closeMenu(); renderCurrentSection();
+}
+function renderCurrentSection() {
+  switch (State.currentSection) {
+    case 'accounting': renderAccounting(); break;
+    case 'pickup': renderPickup(); break;
+    case 'sorts': renderSorts(); break;
+    case 'photos': renderPhotos(); break;
+    case 'dates': renderDates(); break;
+    case 'delivery': renderDelivery(); break;
+    case 'excel': renderExcel(); break;
+    case 'synclog': renderSynclog(); break;
+    case 'actionlog': renderActionlog(); break;
+  }
+}
+function openMenu() { document.getElementById('side-menu').classList.add('open'); document.getElementById('menu-overlay').classList.add('open'); }
+function closeMenu() { document.getElementById('side-menu').classList.remove('open'); document.getElementById('menu-overlay').classList.remove('open'); }
+
+function openFilters() {
+  const f = State.filters; const body = document.createElement('div');
+  body.innerHTML = `
+    <div class="form-group"><label>Сорт</label><select id="f-sort"><option value="">--</option>${Object.entries(State.sorts).map(([id, s]) => `<option value="${id}" ${f.sort === id ? 'selected' : ''}>${escHtml(s.name)}</option>`).join('')}</select></div>
+    <div class="form-group"><label>Дата</label><input type="date" id="f-date" value="${escHtml(f.date)}"></div>
+    <div class="form-group"><label>Упаковка</label><select id="f-pack"><option value="">--</option><option value="Корейская" ${f.packaging === 'Корейская' ? 'selected' : ''}>Корейская</option><option value="Прозрачная" ${f.packaging === 'Прозрачная' ? 'selected' : ''}>Прозрачная</option><option value="Пачка" ${f.packaging === 'Пачка' ? 'selected' : ''}>Пачка</option></select></div>
+    <div class="form-group"><label>Доставка</label><select id="f-deliv"><option value="">--</option><option value="yes" ${f.delivery === 'yes' ? 'selected' : ''}>Да</option><option value="no" ${f.delivery === 'no' ? 'selected' : ''}>Нет</option></select></div>
+    <div class="form-group"><label>Адрес содержит</label><input type="text" id="f-addr" value="${escHtml(f.address)}"></div>
+  `;
+  const footer = document.createElement('div'); footer.style.cssText = 'display:flex;gap:8px;justify-content:flex-end;width:100%;flex-wrap:wrap';
+  const reset = document.createElement('button'); reset.className = 'btn'; reset.textContent = 'Сбросить';
+  const cancel = document.createElement('button'); cancel.className = 'btn'; cancel.textContent = 'Отмена';
+  const apply = document.createElement('button'); apply.className = 'btn primary'; apply.textContent = 'Применить';
+  footer.append(reset, cancel, apply);
+  const m = Modal.open({ title: 'Фильтры', body, footer });
+  reset.onclick = () => { State.filters = { search: State.filters.search, sort: '', date: '', packaging: '', delivery: '', address: '' }; m.close(); renderAccounting(); };
+  cancel.onclick = () => m.close();
+  apply.onclick = () => {
+    f.sort = body.querySelector('#f-sort').value; f.date = body.querySelector('#f-date').value;
+    f.packaging = body.querySelector('#f-pack').value; f.delivery = body.querySelector('#f-deliv').value;
+    f.address = body.querySelector('#f-addr').value.trim(); m.close(); renderAccounting();
+  };
+}
+function applyTheme(theme) {
+  document.documentElement.setAttribute('data-theme', theme); State.settings.theme = theme; localStorage.setItem('theme', theme);
+  document.querySelectorAll('#theme-seg button').forEach(b => b.classList.toggle('active', b.dataset.themeVal === theme));
+  const meta = document.querySelector('meta[name="theme-color"]'); if (meta) meta.setAttribute('content', theme === 'dark' ? '#12161d' : '#ffffff');
+}
+function applyFont(font) {
+  document.documentElement.setAttribute('data-font', font); State.settings.font = font; localStorage.setItem('font', font);
+  document.querySelectorAll('#font-seg button').forEach(b => b.classList.toggle('active', b.dataset.fontVal === font));
+}
+async function init() {
+  const theme = localStorage.getItem('theme') || 'light'; const font = localStorage.getItem('font') || 'm';
+  applyTheme(theme); applyFont(font);
+  await loadLogs();
+  window.addEventListener('online', () => { State.online = true; updateSyncIndicator(); toast('Онлайн', 'success'); Queue.trySyncSoon(); });
+  window.addEventListener('offline', () => { State.online = false; updateSyncIndicator(); showNetworkErrorToast(); });
+  try { await initFirebase(); } catch (e) { console.error(e); toast('Ошибка инициализации Firebase', 'error'); }
+  Queue.startAuto(); updateSyncIndicator();
+  document.getElementById('hamburger').onclick = openMenu;
+  document.getElementById('menu-overlay').onclick = closeMenu;
+  document.querySelectorAll('.menu-item').forEach(m => { m.onclick = () => switchSection(m.dataset.section); });
+  document.getElementById('btn-manual-sync').onclick = async () => { toast('Синхронизация…'); await Queue.process(); toast('Готово', 'success'); };
+  document.getElementById('acc-search').oninput = (e) => { State.filters.search = e.target.value; renderAccounting(); };
+  document.getElementById('acc-filter-btn').onclick = openFilters;
+  document.getElementById('acc-add-btn').onclick = () => openOrderEditor(null);
+  document.getElementById('sort-add-btn').onclick = () => openSortEditor(null);
+  document.getElementById('xls-download').onclick = downloadExcel;
+  document.getElementById('xls-share').onclick = shareExcel;
+  document.querySelectorAll('#theme-seg button').forEach(b => { b.onclick = () => applyTheme(b.dataset.themeVal); });
+  document.querySelectorAll('#font-seg button').forEach(b => { b.onclick = () => applyFont(b.dataset.fontVal); });
+  document.getElementById('check-conn-btn').onclick = checkConnection;
+  document.getElementById('open-db-btn').onclick = () => { window.open('https://console.firebase.google.com/project/tulpann36/database', '_blank'); };
+  document.getElementById('backup-save-btn').onclick = backupSave;
+  document.getElementById('backup-load-btn').onclick = backupLoad;
+  const tulip = document.getElementById('tulip-anim'); let tulipColor = 1;
+  tulip.onclick = () => { tulip.classList.remove('color-' + tulipColor); tulipColor = (tulipColor % 5) + 1; tulip.classList.add('color-' + tulipColor); };
+  renderAccounting();
+  const loader = document.getElementById('overlay-loader'); if (loader) loader.style.display = 'none';
+  setTimeout(() => { if (State.pendingCount > 0) Queue.process(); }, 3000);
+}
+document.addEventListener('DOMContentLoaded', init);
+window.addEventListener('fb-ready', () => {});
+window.debugSync = async function() {
+  console.log('=== SYNC DEBUG ==='); console.log('URL:', FIREBASE_DB_URL); console.log('online:', State.online);
+  console.log('firebaseReady:', State.firebaseReady); console.log('pendingCount:', State.pendingCount);
+  const q = await Queue.list(); console.log('queue:', q);
+  for (const op of q) { try { await Queue.applyOp(op); console.log('OK:', op.type, op.id); } catch (e) { console.error('FAIL:', op.type, op.id, e.code, e.message); } }
+};
+</script>
+</body>
+</html>
